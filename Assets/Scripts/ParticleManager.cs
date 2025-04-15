@@ -49,12 +49,19 @@ public class ParticleManager : MonoBehaviour {
     public const int BOX_SIZE = 10;
     public const float HALF_BOX = BOX_SIZE / 2;
 
+    [Header("Particle Properties")]
+    public const float PARTICLE_MASS = 1.0f;
+    public const float RECIPROCAL_MASS = 1 / PARTICLE_MASS;
+    public const float TARGET_DENSITY = 25.0f;
+    public const float GAS_CONSTANT = 1.0f;
+
     [Header("Particle Settings")]
     public const int ROW_COUNT = 10;
     public const int HALF_ROW = ROW_COUNT / 2;
     public const int PARTICLE_COUNT = ROW_COUNT * ROW_COUNT * ROW_COUNT;
     public const float PARTICLE_RADIUS = 0.2f;
-    public const float PARTICLE_MASS = 1.0f;
+    public const float PARTICLE_EFFECT_RADIUS = 1.0f;
+    public const float PARTICLE_EFFECT_RADIUS_SQUARED = PARTICLE_EFFECT_RADIUS * PARTICLE_EFFECT_RADIUS;
     public const float SPAWN_VARIANCE = 0.1f;
     public readonly Vector3 SPAWN_POINT = new(HALF_BOX, BOX_SIZE, HALF_BOX);
     
@@ -74,10 +81,11 @@ public class ParticleManager : MonoBehaviour {
         for(int i = 0; i < PARTICLE_COUNT; i++) {
             Particle currentParticle = particles[i];
 
-            currentParticle.velocity += currentParticle.currentForce / PARTICLE_MASS * Time.deltaTime;
+            currentParticle.velocity += RECIPROCAL_MASS * Time.deltaTime * currentParticle.currentForce; //multiplying is faster than dividing
             currentParticle.position += currentParticle.velocity * Time.deltaTime;
 
             currentParticle.ResolveCollisions(BOX_SIZE);
+            currentParticle = CalculateDensityPressure(currentParticle);
 
             currentParticle.gameObject.transform.position = currentParticle.position;
             particles[i] = currentParticle;
@@ -113,5 +121,35 @@ public class ParticleManager : MonoBehaviour {
                 }
             }
         }
+    }
+
+    public float Poly6(float r2, float h) {
+        float h2 = h * h;
+
+        if(r2 > h2) return 0;
+
+        float x = 1.0f - r2 / h2;
+
+        return 315.0f / (64.0f * Mathf.PI * Mathf.Pow(h, 3)) * x * x * x;
+    }
+
+    public Particle CalculateDensityPressure(Particle particle) {
+        float sum = 0;
+
+        for(int i = 0; i < PARTICLE_COUNT; i++) {
+            if(ReferenceEquals(particle, particles[i])) continue;
+
+            Vector3 diff = particle.position - particles[i].position;
+            float diffSquared = Vector3.Dot(diff, diff);
+
+            if(PARTICLE_EFFECT_RADIUS_SQUARED >= diffSquared) {
+                sum += Poly6(diffSquared, PARTICLE_EFFECT_RADIUS);
+            }
+        }
+
+        particle.density = sum * PARTICLE_MASS + 0.00001f; //add really small value to prevent division by 0;
+        particle.pressure = GAS_CONSTANT * (particle.density - TARGET_DENSITY);
+
+        return particle;
     }
 }

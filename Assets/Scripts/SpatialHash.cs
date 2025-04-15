@@ -29,6 +29,7 @@ public class SpatialHash : MonoBehaviour
     private Vector3Int[] _cells;
     private uint[] _hashes;
     private IndexKey[] _keys;
+    private int[] _startIndices;
 
     // setters
     public void SetCell(int index, Vector3Int value) {
@@ -58,6 +59,15 @@ public class SpatialHash : MonoBehaviour
         _keys = keys;
     }
 
+    public void SetStartIndex(int index, int startIndex) {
+        if(index < 0 || index >= _startIndices.Length) throw new ArgumentException("ERROR::SPATIAL_HASH::SET_START_INDEX::INDEX_OUT_OF_BOUNDS");
+        else _startIndices[index] = startIndex;
+    }
+
+    public void SetStartIndices(int[] startIndices) {
+        _startIndices = startIndices;
+    }
+
     // getters
     public Vector3Int GetCell(int index) {
         if(index < 0 || index >= _cells.Length) throw new ArgumentException("ERROR::SPATIAL_HASH::GET_CELL::INDEX_OUT_OF_BOUNDS");
@@ -84,6 +94,15 @@ public class SpatialHash : MonoBehaviour
 
     public IndexKey[] GetKeys() {
         return _keys;
+    }
+
+    public int GetStartIndex(int index) {
+        if(index < 0 || index >= _startIndices.Length) throw new ArgumentException("ERROR::SPATIAL_HASH::SET_START_INDEX::INDEX_OUT_OF_BOUNDS");
+        else return _startIndices[index];
+    }
+
+    public int[] GetStartIndices() {
+        return _startIndices;
     }
 
     // property calculations
@@ -140,12 +159,16 @@ public class SpatialHash : MonoBehaviour
         SetKeys(keys);
     }
 
-    void Start()
-    {
-        
+    public void CalculateStartIndex(IndexKey[] keys) {
+        for(int i = 0; i < keys.Length; i++) {
+            int key = keys[i].Key;
+            int keyPrev = i == 0 ? int.MaxValue : keys[i-1].Key;
+
+            if(key != keyPrev) SetStartIndex(key, i);
+        }
     }
 
-    void Update()
-    {
+    public void InRadius(Vector3 point) {
+        Vector3 cell = CalculateCell(point);
     }
 }
