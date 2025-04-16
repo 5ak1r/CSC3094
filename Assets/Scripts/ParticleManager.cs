@@ -1,44 +1,50 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
 public struct Particle {
     public int ID;
-    public float density;
-    public float pressure;
 
     public Vector3 currentForce;
     public Vector3 velocity;
     public Vector3 position;
 
+    public float density;
+    public float pressure;
+
+    public Vector3Int cell;
+    public uint hash;
+    public int key;
+
+    public Dictionary<uint, uint> neighbourTable;
+    public HashSet<Particle> neighbours;
+
     public GameObject gameObject;
 
     public void ResolveCollisions(int boxSize) {
-        int walls = boxSize;
-        
-        if(position.y <= 0.0f) {
-            Vector3 pos = position;
-            pos.y = 0.0f;
-            position = pos;
+        float damping = -0.9f;
 
-            velocity.y *= -0.9f;
+        if(position.y <= 0.0f) {
+            position.y = 0.0f;
+            velocity.y *= damping;
 
             if(Mathf.Abs(velocity.y) < 0.1f) velocity.y = 0.0f; //stop if negligible bounce
         }
 
-        if (Mathf.Abs(position.x) >= walls) {
-            Vector3 pos = position;
-            pos.x = (position.x > 0.0f) ? walls : -walls;
-            position = pos;
-
-            velocity.x *= -0.9f;
+        if (position.x <= 0) {
+            position.x = 0;
+            velocity.x *= damping;
+        } else if (position.x >= boxSize) {
+            position.x = position.x <= 0 ? 0: boxSize;
+            velocity.x *= damping;
         }
 
-        if (Mathf.Abs(position.z) >= walls) {
-            Vector3 pos = position;
-            pos.z = (position.z > 0.0f) ? walls : -walls;
-            position = pos;
-
-            velocity.z *= -0.9f;
+        if (position.z <= 0) {
+            position.z = 0;
+            velocity.z *= damping;
+        } else if (position.z >= boxSize) {
+            position.z = boxSize;
+            velocity.z *= damping;
         }
     }
 }
@@ -47,22 +53,23 @@ public class ParticleManager : MonoBehaviour {
     
     [Header("General Constants")]
     public const int BOX_SIZE = 10;
-    public const float HALF_BOX = BOX_SIZE / 2;
+    public const int HALF_BOX = BOX_SIZE / 2;
+    public const float EPSILON = 1e-5f;
 
     [Header("Particle Properties")]
-    public const float PARTICLE_MASS = 1.0f;
+    public const float PARTICLE_MASS = 0.02f;
     public const float PARTICLE_MASS_SQUARED = PARTICLE_MASS * PARTICLE_MASS;
     public const float RECIPROCAL_MASS = 1 / PARTICLE_MASS;
-    public const float TARGET_DENSITY = 25.0f;
-    public const float GAS_CONSTANT = 1.0f;
-    public const float VISCOSITY = 1.0f;
+    public const float TARGET_DENSITY = 1000.0f;
+    public const float GAS_CONSTANT = 2000.0f;
+    public const float VISCOSITY = 3.5f;
 
     [Header("Particle Settings")]
     public const int ROW_COUNT = 10;
     public const int HALF_ROW = ROW_COUNT / 2;
     public const int PARTICLE_COUNT = ROW_COUNT * ROW_COUNT * ROW_COUNT;
     public const float PARTICLE_RADIUS = 0.2f;
-    public const float PARTICLE_EFFECT_RADIUS = 1.0f;
+    public const float PARTICLE_EFFECT_RADIUS = 0.8f;
     public const float PARTICLE_EFFECT_RADIUS_SQUARED = PARTICLE_EFFECT_RADIUS * PARTICLE_EFFECT_RADIUS;
     public const float PARTICLE_EFFECT_RADIUS_CUBED = PARTICLE_EFFECT_RADIUS_SQUARED * PARTICLE_EFFECT_RADIUS;
     public const float PARTICLE_EFFECT_RADIUS_FOURTH = PARTICLE_EFFECT_RADIUS_CUBED * PARTICLE_EFFECT_RADIUS;
@@ -83,19 +90,29 @@ public class ParticleManager : MonoBehaviour {
     }
 
     private void Update() {
+        Particle[] particleBuffer = new Particle[PARTICLE_COUNT];
+
         for(int i = 0; i < PARTICLE_COUNT; i++) {
             Particle currentParticle = particles[i];
+
+            /*currentParticle.cell = SpatialHash.CalculateCell(currentParticle.position);
+            currentParticle.hash = SpatialHash.CalculateCellHash(currentParticle.cell);
+            currentParticle.key = SpatialHash.CalculateCellKey(currentParticle.hash);
+            currentParticle.neighbourTable = SpatialHash.NeighbourTable(particles);
+            currentParticle.neighbours = SpatialHash.GetNeighbours(currentParticle, particles);*/
 
             currentParticle.velocity += RECIPROCAL_MASS * Time.deltaTime * currentParticle.currentForce; //multiplying is faster than dividing
             currentParticle.position += currentParticle.velocity * Time.deltaTime;
 
             currentParticle.ResolveCollisions(BOX_SIZE);
-            currentParticle = CalculateDensityPressure(currentParticle);
-            currentParticle = ComputeForces(currentParticle);
+            //currentParticle = CalculateDensityPressure(currentParticle);
+            //currentParticle = ComputeForces(currentParticle);
 
             currentParticle.gameObject.transform.position = currentParticle.position;
-            particles[i] = currentParticle;
+            particleBuffer[i] = currentParticle;
         }
+
+        particles = particleBuffer;
     }
 
     private void OnDrawGizmos() {
@@ -119,8 +136,8 @@ public class ParticleManager : MonoBehaviour {
                     {
                         ID = id,
                         position = particlePosition,
-                        currentForce = new(0, GRAVITY, 0),
-                        gameObject = particleInit
+                        gameObject = particleInit,
+                        currentForce = new(0.0f, PARTICLE_MASS * GRAVITY, 0.0f)
                     };
 
                     particles[id] = particleInst;
@@ -151,22 +168,30 @@ public class ParticleManager : MonoBehaviour {
         return SpikyKernelFirstDerivative(dist) * dir;
     }
 
+    public float ViscosityLaplacianKernel(float r) {
+        if(r >= 0.0f && r <= PARTICLE_EFFECT_RADIUS) {
+            return 45.0f / (Mathf.PI * Mathf.Pow(PARTICLE_EFFECT_RADIUS, 6)) * (PARTICLE_EFFECT_RADIUS - r);
+        }
+        
+        return 0f;
+    }
+
     //calculations
     public Particle CalculateDensityPressure(Particle particle) {
         float sum = 0;
 
-        for(int i = 0; i < PARTICLE_COUNT; i++) {
-            if(ReferenceEquals(particle, particles[i])) continue;
+        foreach(Particle other in particles) {
+            if(ReferenceEquals(particle, other)) continue;
 
-            Vector3 diff = particle.position - particles[i].position;
-            float diffSquared = Vector3.Dot(diff, diff);
+            Vector3 diff = particle.position - other.position;
+            float diffSquared = Vector3.Dot(particle.position, other.position);
 
-            if(PARTICLE_EFFECT_RADIUS_SQUARED >= diffSquared) {
-                sum += Poly6(diffSquared);
-            }
+            if(diffSquared > PARTICLE_EFFECT_RADIUS_SQUARED) continue;
+
+            sum += Poly6(diffSquared);
         }
 
-        particle.density = sum * PARTICLE_MASS + 0.00001f; //add really small value to prevent division by 0;
+        particle.density = sum * PARTICLE_MASS + EPSILON; //add really small value to prevent division by 0;
         particle.pressure = GAS_CONSTANT * (particle.density - TARGET_DENSITY);
 
         return particle;
@@ -174,30 +199,30 @@ public class ParticleManager : MonoBehaviour {
 
     public Particle ComputeForces(Particle particle) {
         Vector3 pos = particle.position;
-        float densitySquared = particle.density * particle.density;
 
-        Vector3 pressure = Vector3.zero;
-        Vector3 viscosity = Vector3.zero;
+        Vector3 pressureForce = Vector3.zero;
+        Vector3 viscosityForce = Vector3.zero;
 
-        for(int i = 0; i < PARTICLE_COUNT; i++) {
-            if(ReferenceEquals(particle, particles[i])) continue;
+        foreach(Particle other in particles) {
+            if(ReferenceEquals(particle, other)) continue;
 
-            float dist = Vector3.Dot(particles[i].position, pos);
+            float dist = Vector3.Distance(other.position, pos);
 
-            if(dist > PARTICLE_RADIUS * 2) continue;
+            if(dist >= PARTICLE_RADIUS * 2 || dist <= 0.0f) continue;
 
-            Vector3 pressureGradientDir = Vector3.Normalize(particles[i].position - pos);
-            Vector3 pressureContribution = PARTICLE_MASS_SQUARED * SpikyKernelGradient(dist, pressureGradientDir);
-            pressureContribution *= particles[i].pressure / densitySquared + particles[i].pressure / (particles[i].density * particles[i].density);
+            Vector3 pressureGradientDir = Vector3.Normalize(pos - other.position);
+            float pressureTerm = (particle.pressure + other.pressure) / (2.0f * other.density);
+            Vector3 pressureContribution = -PARTICLE_MASS * pressureTerm * SpikyKernelGradient(dist, pressureGradientDir);
+            
+            Vector3 velDiff = other.velocity - particle.velocity;
+            Vector3 viscosityContribution = VISCOSITY * PARTICLE_MASS * velDiff / other.density;
+            viscosityContribution *= ViscosityLaplacianKernel(dist);
 
-            Vector3 viscosityContribution = VISCOSITY * PARTICLE_MASS_SQUARED * (particles[i].velocity - particle.velocity) / particles[i].density;
-            viscosityContribution *= SpikyKernelSecondDerivative(dist);
-
-            pressure += pressureContribution;
-            viscosity += viscosityContribution;
+            pressureForce += pressureContribution;
+            viscosityForce += viscosityContribution;
         }
 
-        particle.currentForce = new Vector3(0.0f, GRAVITY * PARTICLE_MASS, 0.0f) - pressure + viscosity;
+        particle.currentForce = new Vector3(0.0f, GRAVITY * PARTICLE_MASS, 0.0f) + pressureForce + viscosityForce;
 
         return particle;
     }
