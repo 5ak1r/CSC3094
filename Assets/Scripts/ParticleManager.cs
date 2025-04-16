@@ -51,9 +51,11 @@ public class ParticleManager : MonoBehaviour {
 
     [Header("Particle Properties")]
     public const float PARTICLE_MASS = 1.0f;
+    public const float PARTICLE_MASS_SQUARED = PARTICLE_MASS * PARTICLE_MASS;
     public const float RECIPROCAL_MASS = 1 / PARTICLE_MASS;
     public const float TARGET_DENSITY = 25.0f;
     public const float GAS_CONSTANT = 1.0f;
+    public const float VISCOSITY = 1.0f;
 
     [Header("Particle Settings")]
     public const int ROW_COUNT = 10;
@@ -62,6 +64,9 @@ public class ParticleManager : MonoBehaviour {
     public const float PARTICLE_RADIUS = 0.2f;
     public const float PARTICLE_EFFECT_RADIUS = 1.0f;
     public const float PARTICLE_EFFECT_RADIUS_SQUARED = PARTICLE_EFFECT_RADIUS * PARTICLE_EFFECT_RADIUS;
+    public const float PARTICLE_EFFECT_RADIUS_CUBED = PARTICLE_EFFECT_RADIUS_SQUARED * PARTICLE_EFFECT_RADIUS;
+    public const float PARTICLE_EFFECT_RADIUS_FOURTH = PARTICLE_EFFECT_RADIUS_CUBED * PARTICLE_EFFECT_RADIUS;
+    public const float PARTICLE_EFFECT_RADIUS_FIFTH = PARTICLE_EFFECT_RADIUS_FOURTH * PARTICLE_EFFECT_RADIUS;
     public const float SPAWN_VARIANCE = 0.1f;
     public readonly Vector3 SPAWN_POINT = new(HALF_BOX, BOX_SIZE, HALF_BOX);
     
@@ -86,6 +91,7 @@ public class ParticleManager : MonoBehaviour {
 
             currentParticle.ResolveCollisions(BOX_SIZE);
             currentParticle = CalculateDensityPressure(currentParticle);
+            currentParticle = ComputeForces(currentParticle);
 
             currentParticle.gameObject.transform.position = currentParticle.position;
             particles[i] = currentParticle;
@@ -123,16 +129,29 @@ public class ParticleManager : MonoBehaviour {
         }
     }
 
-    public float Poly6(float r2, float h) {
-        float h2 = h * h;
+    //kernels
+    public float Poly6(float r2) {
+        //if(r2 > PARTICLE_EFFECT_RADIUS_SQUARED) return 0; don't need this check as it's done beforehand
 
-        if(r2 > h2) return 0;
-
-        float x = 1.0f - r2 / h2;
-
-        return 315.0f / (64.0f * Mathf.PI * Mathf.Pow(h, 3)) * x * x * x;
+        float x = 1.0f - r2 / PARTICLE_EFFECT_RADIUS_SQUARED;
+        return 315.0f / (64.0f * Mathf.PI * PARTICLE_EFFECT_RADIUS_CUBED) * x * x * x;
     }
 
+    public float SpikyKernelFirstDerivative(float dist) {
+        float x = 1.0f - dist / PARTICLE_EFFECT_RADIUS;
+        return -45.0f / (Mathf.PI * PARTICLE_EFFECT_RADIUS_FOURTH) * x * x;
+    }
+
+    public float SpikyKernelSecondDerivative(float dist) {
+        float x = 1.0f - dist / PARTICLE_EFFECT_RADIUS;
+        return 90.0f / (Mathf.PI * PARTICLE_EFFECT_RADIUS_FIFTH) * x;
+    }
+
+    public Vector3 SpikyKernelGradient(float dist, Vector3 dir) {
+        return SpikyKernelFirstDerivative(dist) * dir;
+    }
+
+    //calculations
     public Particle CalculateDensityPressure(Particle particle) {
         float sum = 0;
 
@@ -143,12 +162,42 @@ public class ParticleManager : MonoBehaviour {
             float diffSquared = Vector3.Dot(diff, diff);
 
             if(PARTICLE_EFFECT_RADIUS_SQUARED >= diffSquared) {
-                sum += Poly6(diffSquared, PARTICLE_EFFECT_RADIUS);
+                sum += Poly6(diffSquared);
             }
         }
 
         particle.density = sum * PARTICLE_MASS + 0.00001f; //add really small value to prevent division by 0;
         particle.pressure = GAS_CONSTANT * (particle.density - TARGET_DENSITY);
+
+        return particle;
+    }
+
+    public Particle ComputeForces(Particle particle) {
+        Vector3 pos = particle.position;
+        float densitySquared = particle.density * particle.density;
+
+        Vector3 pressure = Vector3.zero;
+        Vector3 viscosity = Vector3.zero;
+
+        for(int i = 0; i < PARTICLE_COUNT; i++) {
+            if(ReferenceEquals(particle, particles[i])) continue;
+
+            float dist = Vector3.Dot(particles[i].position, pos);
+
+            if(dist > PARTICLE_RADIUS * 2) continue;
+
+            Vector3 pressureGradientDir = Vector3.Normalize(particles[i].position - pos);
+            Vector3 pressureContribution = PARTICLE_MASS_SQUARED * SpikyKernelGradient(dist, pressureGradientDir);
+            pressureContribution *= particles[i].pressure / densitySquared + particles[i].pressure / (particles[i].density * particles[i].density);
+
+            Vector3 viscosityContribution = VISCOSITY * PARTICLE_MASS_SQUARED * (particles[i].velocity - particle.velocity) / particles[i].density;
+            viscosityContribution *= SpikyKernelSecondDerivative(dist);
+
+            pressure += pressureContribution;
+            viscosity += viscosityContribution;
+        }
+
+        particle.currentForce = new Vector3(0.0f, GRAVITY * PARTICLE_MASS, 0.0f) - pressure + viscosity;
 
         return particle;
     }
