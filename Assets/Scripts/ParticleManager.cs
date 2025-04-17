@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 
 [System.Serializable]
@@ -14,10 +16,8 @@ public struct Particle {
 
     public Vector3Int cell;
     public uint hash;
-    public int key;
 
-    public Dictionary<uint, uint> neighbourTable;
-    public HashSet<Particle> neighbours;
+    public HashSet<int> neighbours;
 
     public GameObject gameObject;
 
@@ -57,12 +57,12 @@ public class ParticleManager : MonoBehaviour {
     public const float EPSILON = 1e-5f;
 
     [Header("Particle Properties")]
-    public const float PARTICLE_MASS = 0.02f;
+    public const float PARTICLE_MASS = 1.0f;
     public const float PARTICLE_MASS_SQUARED = PARTICLE_MASS * PARTICLE_MASS;
     public const float RECIPROCAL_MASS = 1 / PARTICLE_MASS;
-    public const float TARGET_DENSITY = 1000.0f;
-    public const float GAS_CONSTANT = 2000.0f;
-    public const float VISCOSITY = 3.5f;
+    public const float TARGET_DENSITY = 1.0f;
+    public const float GAS_CONSTANT = 2.0f;
+    public const float VISCOSITY = -0.003f;
 
     [Header("Particle Settings")]
     public const int ROW_COUNT = 10;
@@ -80,6 +80,9 @@ public class ParticleManager : MonoBehaviour {
     [Header("Physics Settings")]
     public const float GRAVITY = -9.81f;
 
+    [Header("Spatial Hash")]
+    public Dictionary<uint, List<int>> neighbourTable;
+
     [Header("Particles")]
     public GameObject particleObj;
     public Particle[] particles;
@@ -90,29 +93,50 @@ public class ParticleManager : MonoBehaviour {
     }
 
     private void Update() {
-        Particle[] particleBuffer = new Particle[PARTICLE_COUNT];
 
+        //spatial hash and keys
         for(int i = 0; i < PARTICLE_COUNT; i++) {
             Particle currentParticle = particles[i];
 
-            /*currentParticle.cell = SpatialHash.CalculateCell(currentParticle.position);
+            currentParticle.cell = SpatialHash.CalculateCell(currentParticle.position);
             currentParticle.hash = SpatialHash.CalculateCellHash(currentParticle.cell);
-            currentParticle.key = SpatialHash.CalculateCellKey(currentParticle.hash);
-            currentParticle.neighbourTable = SpatialHash.NeighbourTable(particles);
-            currentParticle.neighbours = SpatialHash.GetNeighbours(currentParticle, particles);*/
 
+            particles[i] = currentParticle;
+        }
+
+        //update neighbour table
+        neighbourTable = SpatialHash.NeighbourTable(particles);
+
+        for(int i = 0; i < PARTICLE_COUNT; i++) {
+            particles[i].neighbours = SpatialHash.GetNeighbours(neighbourTable, particles[i], particles);
+        }
+
+        //apply velocity and resolve collisions
+        for(int i = 0; i < PARTICLE_COUNT; i++) {
+            Particle currentParticle = particles[i];
+            
             currentParticle.velocity += RECIPROCAL_MASS * Time.deltaTime * currentParticle.currentForce; //multiplying is faster than dividing
             currentParticle.position += currentParticle.velocity * Time.deltaTime;
 
             currentParticle.ResolveCollisions(BOX_SIZE);
-            //currentParticle = CalculateDensityPressure(currentParticle);
-            //currentParticle = ComputeForces(currentParticle);
 
-            currentParticle.gameObject.transform.position = currentParticle.position;
-            particleBuffer[i] = currentParticle;
+            particles[i] = currentParticle;
         }
 
-        particles = particleBuffer;
+        //calculate density and pressure
+        for(int i = 0; i < PARTICLE_COUNT; i++) {
+            particles[i] = CalculateDensityPressure(particles[i]);
+        }
+
+        //apply forces
+        for(int i = 0; i < PARTICLE_COUNT; i++) {
+            Particle currentParticle = particles[i];
+
+            currentParticle = ComputeForces(currentParticle);
+            currentParticle.gameObject.transform.position = currentParticle.position;
+
+            particles[i] = currentParticle;
+        }
     }
 
     private void OnDrawGizmos() {
@@ -180,12 +204,12 @@ public class ParticleManager : MonoBehaviour {
     public Particle CalculateDensityPressure(Particle particle) {
         float sum = 0;
 
-        foreach(Particle other in particles) {
-            if(ReferenceEquals(particle, other)) continue;
-
+        foreach(Particle other in particles) { //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
+            if(particle.ID == other.ID) continue;
+            
             Vector3 diff = particle.position - other.position;
-            float diffSquared = Vector3.Dot(particle.position, other.position);
-
+            float diffSquared = Vector3.SqrMagnitude(diff);
+            
             if(diffSquared > PARTICLE_EFFECT_RADIUS_SQUARED) continue;
 
             sum += Poly6(diffSquared);
@@ -203,8 +227,9 @@ public class ParticleManager : MonoBehaviour {
         Vector3 pressureForce = Vector3.zero;
         Vector3 viscosityForce = Vector3.zero;
 
-        foreach(Particle other in particles) {
-            if(ReferenceEquals(particle, other)) continue;
+        foreach(Particle other in particles) { //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
+            if(particle.ID == other.ID) continue;
+            if(other.density <= EPSILON) continue;
 
             float dist = Vector3.Distance(other.position, pos);
 

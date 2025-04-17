@@ -1,43 +1,53 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
+using Unity.VisualScripting.Dependencies.Sqlite;
 using UnityEngine;
 
 public class SpatialHash : MonoBehaviour
 {
+
+    public const float CELL_SIZE = 1.0f;
+
     // property calculations
     public static Vector3Int CalculateCell(Vector3 position) {
-        return Vector3Int.FloorToInt(position / ParticleManager.BOX_SIZE);
+        return Vector3Int.FloorToInt(position / CELL_SIZE);
     }
 
     public static uint CalculateCellHash(Vector3Int cell) {
-        return  (uint)(cell.x * 73856093) ^
-                (uint)(cell.y * 19349663) ^
-                (uint)(cell.z * 83492791);
-    }
-
-    public static int CalculateCellKey(uint hash) {
-        return (int)(hash % ParticleManager.PARTICLE_COUNT);
+        unchecked {
+            int hash = cell.x * 73856093 ^
+                       cell.y * 19349663 ^
+                       cell.z * 83492791;
+            return (uint)hash;
+        }
     }
 
     // sort keys for spatial lookup
     public static Particle[] SortParticles(Particle[] particles) {
-        Array.Sort(particles, (i, j) => i.key.CompareTo(j.key));
+        Array.Sort(particles, (i, j) => i.hash.CompareTo(j.hash));
 
         return particles;
     }
 
-    public static Dictionary<uint, uint> NeighbourTable(Particle[] particles) {
-        Dictionary<uint, uint> neighbourTable = new();
+    public static Dictionary<uint, List<int>> NeighbourTable(Particle[] particles) {
+        Dictionary<uint, List<int>> neighbourTable = new();
 
-        for(uint i = 0; i < particles.Length; i++) {
-            neighbourTable[particles[i].hash] = i;
+        for(int i = 0; i < particles.Length; i++) {
+            uint hash = particles[i].hash;
+
+            if(!neighbourTable.ContainsKey(hash)) {
+                neighbourTable[hash] = new List<int>();
+            }
+
+            neighbourTable[hash].Add(i);
         }
 
         return neighbourTable;
     }
 
-    public static HashSet<Particle> GetNeighbours(Particle particle, Particle[] particles) {
-        HashSet<Particle> neighbours = new();
+    public static HashSet<int> GetNeighbours(Dictionary<uint, List<int>> neighbourTable, Particle particle, Particle[] particles) {
+        HashSet<int> neighbours = new();
 
         for(int dx = -1; dx <= 1; dx++) {
             for(int dy = -1; dy <= 1; dy++) {
@@ -45,8 +55,12 @@ public class SpatialHash : MonoBehaviour
                     Vector3Int neighbourCell = particle.cell + new Vector3Int(dx, dy, dz);
                     uint neighbourHash = CalculateCellHash(neighbourCell);
 
-                    if(particle.neighbourTable.ContainsKey(neighbourHash)) {
-                        neighbours.Add(particles[particle.neighbourTable[neighbourHash]]);
+                    if(neighbourTable.TryGetValue(neighbourHash, out var indices)) {
+                        foreach(int index in indices) {
+                            if(particles[index].ID != particle.ID) {
+                                neighbours.Add(particles[index].ID);
+                            }
+                        }
                     }
                 }
             }
