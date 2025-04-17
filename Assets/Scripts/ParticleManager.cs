@@ -204,7 +204,8 @@ public class ParticleManager : MonoBehaviour {
     public Particle CalculateDensityPressure(Particle particle) {
         float sum = 0;
 
-        foreach(Particle other in particles) { //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
+        foreach(int otherID in particle.neighbours) {
+            Particle other = particles[otherID]; //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
             if(particle.ID == other.ID) continue;
             
             Vector3 diff = particle.position - other.position;
@@ -227,7 +228,8 @@ public class ParticleManager : MonoBehaviour {
         Vector3 pressureForce = Vector3.zero;
         Vector3 viscosityForce = Vector3.zero;
 
-        foreach(Particle other in particles) { //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
+        foreach(int otherID in particle.neighbours) {
+            Particle other = particles[otherID]; //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
             if(particle.ID == other.ID) continue;
             if(other.density <= EPSILON) continue;
 
