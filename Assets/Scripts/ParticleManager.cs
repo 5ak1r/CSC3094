@@ -71,9 +71,9 @@ public class ParticleManager : MonoBehaviour
     public const float PARTICLE_MASS = 1.0f;
     public const float PARTICLE_MASS_SQUARED = PARTICLE_MASS * PARTICLE_MASS;
     public const float RECIPROCAL_MASS = 1 / PARTICLE_MASS;
-    public float TARGET_DENSITY = 3.0f;
-    public float GAS_CONSTANT = 50.0f;
-    public float VISCOSITY = 0.003f;
+    public const float TARGET_DENSITY = 3.0f;
+    public const float GAS_CONSTANT = 50.0f;
+    public const float VISCOSITY = 0.003f;
 
     [Header("Particle Settings")]
     public const int ROW_COUNT = 10; //row count = 10 gives 13 fps
