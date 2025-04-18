@@ -2,10 +2,17 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SpatialHash : MonoBehaviour
+//https://www.youtube.com/watch?v=zbBwKMRyavE
+//https://www.youtube.com/watch?v=9M72KrGhYuE
+//https://matthias-research.github.io/pages/publications/sca03.pdf
+//https://cg.informatik.uni-freiburg.de/publications/2014_EG_SPH_STAR.pdf
+//https://www.slideserve.com/Mia_John/animation-of-fluids
+//https://mmacklin.com/pbf_sig_preprint.pdf
+
+public class SpatialHashCPU : MonoBehaviour
 {
 
-    public const float CELL_SIZE = ParticleManager.PARTICLE_EFFECT_RADIUS;
+    public const float CELL_SIZE = ParticleManagerCPU.PARTICLE_EFFECT_RADIUS;
 
     // property calculations
     public static Vector3Int CalculateCell(Vector3 position)

@@ -20,7 +20,7 @@ public struct Particle
 
     public void ResolveCollisions(int boxSize)
     {
-        float particleRadius = ParticleManager.PARTICLE_RADIUS;
+        float particleRadius = ParticleManagerCPU.PARTICLE_RADIUS;
         float damping = -0.3f;
 
         if (position.y <= particleRadius)
@@ -58,7 +58,7 @@ public struct Particle
     }
 }
 
-public class ParticleManager : MonoBehaviour
+public class ParticleManagerCPU : MonoBehaviour
 {
 
     [Header("General Constants")]
@@ -101,13 +101,17 @@ public class ParticleManager : MonoBehaviour
     private void Awake()
     {
         particles = new Particle[PARTICLE_COUNT];
-        SpawnParticles();
     }
 
     private void OnDrawGizmos()
     {
         Gizmos.color = Color.black;
         Gizmos.DrawWireCube(new(HALF_BOX, HALF_BOX, HALF_BOX / 2), new(BOX_SIZE, BOX_SIZE, HALF_BOX));
+    }
+
+    private void Start()
+    {
+        SpawnParticles();
     }
 
     private void Update()
@@ -122,16 +126,16 @@ public class ParticleManager : MonoBehaviour
         //update spatial hash and keys
         for (int i = 0; i < PARTICLE_COUNT; i++)
         {
-            particles[i].cell = SpatialHash.CalculateCell(particles[i].position);
-            particles[i].hash = SpatialHash.CalculateCellHash(particles[i].cell);
+            particles[i].cell = SpatialHashCPU.CalculateCell(particles[i].position);
+            particles[i].hash = SpatialHashCPU.CalculateCellHash(particles[i].cell);
         }
 
         //update neighbour table
-        neighbourTable = SpatialHash.NeighbourTable(particles);
+        neighbourTable = SpatialHashCPU.NeighbourTable(particles);
 
         for (int i = 0; i < PARTICLE_COUNT; i++)
         {
-            particles[i].neighbours = SpatialHash.GetNeighbours(neighbourTable, particles[i], particles);
+            particles[i].neighbours = SpatialHashCPU.GetNeighbours(neighbourTable, particles[i], particles);
         }
 
         //calculate density and pressure

@@ -387,6 +387,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1046398175}
   - component: {fileID: 1046398176}
+  - component: {fileID: 1046398177}
   m_Layer: 0
   m_Name: Particle Manager
   m_TagString: Untagged
@@ -421,9 +422,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 273587365d7ef1a4da3d268413704447, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  TARGET_DENSITY: 10
-  GAS_CONSTANT: 100
   particleObj: {fileID: 4596408666455660655, guid: eec6cbf60ca07a8449d4b0b081a7f993, type: 3}
+--- !u!114 &1046398177
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1046398173}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bf5c345026a394c4281cb50f047819ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gpu: 0
+  pmCPU: {fileID: 1046398176}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
