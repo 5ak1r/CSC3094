@@ -66,7 +66,7 @@ public class ParticleManager : MonoBehaviour
     public const int BOX_SIZE = 6;
     public const int HALF_BOX = BOX_SIZE / 2;
     public const float EPSILON = 1e-2f;
-    public float deltaTime = 0.03f;
+    public const float DELTA_TIME = 0.03f;
 
     [Header("Particle Properties")]
     public const float PARTICLE_MASS = 0.005f;
@@ -77,7 +77,7 @@ public class ParticleManager : MonoBehaviour
     public const float VISCOSITY = 0.003f;
 
     [Header("Particle Settings")]
-    public const int ROW_COUNT = 20;
+    public const int ROW_COUNT = 14;
     public const int HALF_ROW = ROW_COUNT / 2;
     public const int PARTICLE_COUNT = ROW_COUNT * ROW_COUNT * ROW_COUNT;
     public const float PARTICLE_RADIUS = 0.1f;
@@ -136,20 +136,13 @@ public class ParticleManager : MonoBehaviour
             particles[i].neighbours = SpatialHash.GetNeighbours(neighbourTable, particles[i], particles);
         }
 
-        foreach(Particle particle in particles) {
-            if(particles[0].neighbours.Contains(particle.ID)) particle.gameObject.GetComponent<MeshRenderer>().material = redMaterial;
-            else particle.gameObject.GetComponent<MeshRenderer>().material = blueMaterial;
-
-            particles[0].gameObject.GetComponent<MeshRenderer>().material = otherMaterial;
-        }
-
         //apply velocity and resolve collisions
         for (int i = 0; i < PARTICLE_COUNT; i++)
         {
             Particle currentParticle = particles[i];
 
-            currentParticle.velocity += RECIPROCAL_MASS * deltaTime * currentParticle.currentForce; //multiplying is faster than dividing
-            currentParticle.position += currentParticle.velocity * deltaTime;
+            currentParticle.velocity += RECIPROCAL_MASS * DELTA_TIME * currentParticle.currentForce; //multiplying is faster than dividing
+            currentParticle.position += currentParticle.velocity * DELTA_TIME;
 
             currentParticle.ResolveCollisions(BOX_SIZE);
 
@@ -188,7 +181,6 @@ public class ParticleManager : MonoBehaviour
                     int id = (i + HALF_ROW) * ROW_COUNT * ROW_COUNT + (j + HALF_ROW) * ROW_COUNT + k + HALF_ROW;
 
                     GameObject particleInit = Instantiate(particleObj, particlePosition, Quaternion.identity);
-                    if(id == 0) particleInit.GetComponent<MeshRenderer>().material = otherMaterial;
                     particleInit.hideFlags = HideFlags.HideInHierarchy;
 
                     Particle particleInst = new()
