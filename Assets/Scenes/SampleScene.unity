@@ -206,7 +206,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 5, y: 5, z: -5}
+  m_LocalPosition: {x: 4, y: 4, z: -4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -421,9 +421,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 273587365d7ef1a4da3d268413704447, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  redMaterial: {fileID: 2100000, guid: 2aeba278e46771547b1397504f7f306b, type: 2}
+  TARGET_DENSITY: 20
+  GAS_CONSTANT: 50
   particleObj: {fileID: 4596408666455660655, guid: eec6cbf60ca07a8449d4b0b081a7f993, type: 3}
-  particles: []
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
