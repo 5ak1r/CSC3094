@@ -76,7 +76,7 @@ public class ParticleManager : MonoBehaviour
     public float VISCOSITY = 0.003f;
 
     [Header("Particle Settings")]
-    public const int ROW_COUNT = 10;
+    public const int ROW_COUNT = 10; //row count = 10 gives 13 fps
     public const int HALF_ROW = ROW_COUNT / 2;
     public const int PARTICLE_COUNT = ROW_COUNT * ROW_COUNT * ROW_COUNT;
     public const float PARTICLE_RADIUS = 0.05f;
