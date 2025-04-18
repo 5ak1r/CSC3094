@@ -73,10 +73,10 @@ public class ParticleManager : MonoBehaviour
     public const float RECIPROCAL_MASS = 1 / PARTICLE_MASS;
     public float TARGET_DENSITY = 3.0f;
     public float GAS_CONSTANT = 50.0f;
-    public const float VISCOSITY = 0.003f;
+    public float VISCOSITY = 0.003f;
 
     [Header("Particle Settings")]
-    public const int ROW_COUNT = 12;
+    public const int ROW_COUNT = 10;
     public const int HALF_ROW = ROW_COUNT / 2;
     public const int PARTICLE_COUNT = ROW_COUNT * ROW_COUNT * ROW_COUNT;
     public const float PARTICLE_RADIUS = 0.05f;
@@ -151,6 +151,10 @@ public class ParticleManager : MonoBehaviour
             Vector3 pressureForce = CalculatePressureForce(particles[i].position, particles[i]);
             Vector3 pressureAcceleration = pressureForce / particles[i].density;
             particles[i].velocity += pressureAcceleration * DELTA_TIME;
+
+            Vector3 viscosityForce = CalculateViscosityForce(particles[i]);
+            Vector3 viscosityAcceleration = viscosityForce / particles[i].density;
+            particles[i].velocity += viscosityAcceleration * DELTA_TIME;
         }
 
         // apply actual position
@@ -276,37 +280,19 @@ public class ParticleManager : MonoBehaviour
         return pressureForce;
     }
 
-    public Particle ComputeForces(Particle particle)
-    {
-        Vector3 pos = particle.position;
-
-        Vector3 pressureForce = Vector3.zero;
+    public Vector3 CalculateViscosityForce(Particle particle) {
+        
         Vector3 viscosityForce = Vector3.zero;
 
         foreach (int otherID in particle.neighbours)
         {
-            Particle other = particles[otherID]; //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
-            if (particle.ID == other.ID) continue;
-            if (other.density <= EPSILON) continue;
+            Particle other = particles[otherID];
+            if(particle.ID == other.ID) continue;
 
-            float dist = (pos - other.position).magnitude;
-
-            if (dist >= PARTICLE_RADIUS * 2) continue;
-
-            Vector3 pressureGradientDir = (pos - other.position) / dist;
-            float pressureTerm = (particle.pressure + other.pressure) / (2.0f * other.density);
-            Vector3 pressureContribution = -PARTICLE_MASS_SQUARED * pressureTerm * SpikyKernelGradient(dist, pressureGradientDir);
-
-            Vector3 velDiff = other.velocity - particle.velocity;
-            Vector3 viscosityContribution = VISCOSITY * PARTICLE_MASS * velDiff / other.density;
-            viscosityContribution *= ViscosityLaplacianKernel(dist);
-
-            pressureForce += pressureContribution;
-            viscosityForce += viscosityContribution;
+            float dist = (particle.position - other.position).magnitude;
+            viscosityForce += (other.velocity - particle.velocity) * ViscosityLaplacianKernel(dist);
         }
 
-        particle.currentForce = pressureForce + viscosityForce;
-
-        return particle;
+        return viscosityForce * VISCOSITY;
     }
 }
