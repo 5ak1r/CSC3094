@@ -77,7 +77,7 @@ public class ParticleManager : MonoBehaviour
     public const float VISCOSITY = 0.003f;
 
     [Header("Particle Settings")]
-    public const int ROW_COUNT = 14;
+    public const int ROW_COUNT = 10;
     public const int HALF_ROW = ROW_COUNT / 2;
     public const int PARTICLE_COUNT = ROW_COUNT * ROW_COUNT * ROW_COUNT;
     public const float PARTICLE_RADIUS = 0.1f;
@@ -93,7 +93,7 @@ public class ParticleManager : MonoBehaviour
     public Material otherMaterial;
 
     [Header("Physics Settings")]
-    public const float GRAVITY = -9.81f;
+    public const float GRAVITY = 9.81f;
 
     [Header("Spatial Hash")]
     public Dictionary<uint, List<int>> neighbourTable;
@@ -116,8 +116,18 @@ public class ParticleManager : MonoBehaviour
 
     private void Update()
     {
+        //apply velocity prediction and resolve collisions
+        for (int i = 0; i < PARTICLE_COUNT; i++)
+        {
+            Particle currentParticle = particles[i];
 
-        //spatial hash and keys
+            currentParticle.velocity += DELTA_TIME * GRAVITY * Vector3.down;
+            currentParticle.position += currentParticle.velocity * DELTA_TIME;
+
+            particles[i] = currentParticle;
+        }
+
+        //update spatial hash and keys
         for (int i = 0; i < PARTICLE_COUNT; i++)
         {
             Particle currentParticle = particles[i];
@@ -136,19 +146,6 @@ public class ParticleManager : MonoBehaviour
             particles[i].neighbours = SpatialHash.GetNeighbours(neighbourTable, particles[i], particles);
         }
 
-        //apply velocity and resolve collisions
-        for (int i = 0; i < PARTICLE_COUNT; i++)
-        {
-            Particle currentParticle = particles[i];
-
-            currentParticle.velocity += RECIPROCAL_MASS * DELTA_TIME * currentParticle.currentForce; //multiplying is faster than dividing
-            currentParticle.position += currentParticle.velocity * DELTA_TIME;
-
-            currentParticle.ResolveCollisions(BOX_SIZE);
-
-            particles[i] = currentParticle;
-        }
-
         //calculate density and pressure
         for (int i = 0; i < PARTICLE_COUNT; i++)
         {
@@ -161,6 +158,13 @@ public class ParticleManager : MonoBehaviour
             Particle currentParticle = particles[i];
 
             currentParticle = ComputeForces(currentParticle);
+
+            currentParticle.velocity += RECIPROCAL_MASS * DELTA_TIME * currentParticle.currentForce;
+            currentParticle.position = currentParticle.gameObject.transform.position;
+            currentParticle.position += currentParticle.velocity * DELTA_TIME;
+
+            currentParticle.ResolveCollisions(BOX_SIZE);
+
             currentParticle.gameObject.transform.position = currentParticle.position;
 
             particles[i] = currentParticle;
@@ -270,11 +274,11 @@ public class ParticleManager : MonoBehaviour
             if (particle.ID == other.ID) continue;
             if (other.density <= EPSILON) continue;
 
-            float dist = Vector3.Distance(other.position, pos);
+            float dist = (pos - other.position).magnitude;
 
             if (dist >= PARTICLE_RADIUS * 2) continue;
 
-            Vector3 pressureGradientDir = Vector3.Normalize(pos - other.position);
+            Vector3 pressureGradientDir = (pos - other.position) / dist;
             float pressureTerm = (particle.pressure + other.pressure) / (2.0f * other.density);
             Vector3 pressureContribution = -PARTICLE_MASS_SQUARED * pressureTerm * SpikyKernelGradient(dist, pressureGradientDir);
 
@@ -286,7 +290,7 @@ public class ParticleManager : MonoBehaviour
             viscosityForce += viscosityContribution;
         }
 
-        particle.currentForce = new Vector3(0.0f, GRAVITY * PARTICLE_MASS, 0.0f) + pressureForce + viscosityForce;
+        particle.currentForce = pressureForce + viscosityForce;
 
         return particle;
     }
