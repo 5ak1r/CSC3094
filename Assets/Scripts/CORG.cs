@@ -5,12 +5,11 @@ public class CORG : MonoBehaviour
     public bool gpu;
 
     public ParticleManagerCPU pmCPU;
+    public ParticleManagerGPU pmGPU;
 
     void Awake()
     {
-        if (gpu) 
-        {
-            pmCPU.enabled = false;
-        }
+        pmCPU.enabled = !gpu;
+        pmGPU.enabled = gpu;
     }
 }

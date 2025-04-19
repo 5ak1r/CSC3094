@@ -1,7 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public struct Particle
+//https://www.youtube.com/watch?v=zbBwKMRyavE
+//https://www.youtube.com/watch?v=9M72KrGhYuE
+//https://matthias-research.github.io/pages/publications/sca03.pdf
+//https://cg.informatik.uni-freiburg.de/publications/2014_EG_SPH_STAR.pdf
+//https://www.slideserve.com/Mia_John/animation-of-fluids
+//https://mmacklin.com/pbf_sig_preprint.pdf
+//https://github.com/lijenicol/SPH-Fluid-Simulator/tree/master
+
+public struct ParticleCPU
 {
     public int ID;
 
@@ -96,15 +104,17 @@ public class ParticleManagerCPU : MonoBehaviour
 
     [Header("Particles")]
     public GameObject particleObj;
-    public Particle[] particles;
+    public ParticleCPU[] particles;
 
     private void Awake()
     {
-        particles = new Particle[PARTICLE_COUNT];
+        particles = new ParticleCPU[PARTICLE_COUNT];
     }
 
     private void OnDrawGizmos()
     {
+        if (GetComponent<CORG>().gpu) return;
+
         Gizmos.color = Color.black;
         Gizmos.DrawWireCube(new(HALF_BOX, HALF_BOX, HALF_BOX / 2), new(BOX_SIZE, BOX_SIZE, HALF_BOX));
     }
@@ -186,7 +196,7 @@ public class ParticleManagerCPU : MonoBehaviour
                     GameObject particleInit = Instantiate(particleObj, particlePosition, Quaternion.identity);
                     particleInit.hideFlags = HideFlags.HideInHierarchy;
 
-                    Particle particleInst = new()
+                    ParticleCPU particleInst = new()
                     {
                         ID = counter,
                         position = particlePosition,
@@ -240,19 +250,19 @@ public class ParticleManagerCPU : MonoBehaviour
     }
 
     //calculations
-    public Particle CalculateDensityPressure(Particle particle)
+    public ParticleCPU CalculateDensityPressure(ParticleCPU particle)
     {
         float sum = 0;
 
         foreach (int otherID in particle.neighbours)
         {
-            Particle other = particles[otherID]; //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
+            ParticleCPU other = particles[otherID]; //foreach(otherID in particle.neighbours) Particle other = particles[otherID];
 
             float dist = (particle.position - other.position).magnitude;
             float distSquared = dist * dist;
 
             if (distSquared < PARTICLE_EFFECT_RADIUS_SQUARED)
-                sum += Poly6(distSquared);
+                sum += Poly6(distSquared * 0.004f);
         }
 
         sum += Poly6(0.0f); //add own density
@@ -263,13 +273,13 @@ public class ParticleManagerCPU : MonoBehaviour
         return particle;
     }
 
-    public Vector3 CalculatePressureForce(Vector3 position, Particle particle)
+    public Vector3 CalculatePressureForce(Vector3 position, ParticleCPU particle)
     {
         Vector3 pressureForce = Vector3.zero;
 
         foreach (int otherID in particle.neighbours)
         {
-            Particle other = particles[otherID];
+            ParticleCPU other = particles[otherID];
             if (particle.ID == other.ID) continue;
 
             Vector3 offset = other.position - position;
@@ -284,14 +294,15 @@ public class ParticleManagerCPU : MonoBehaviour
         return pressureForce;
     }
 
-    public Vector3 CalculateViscosityForce(Particle particle) {
-        
+    public Vector3 CalculateViscosityForce(ParticleCPU particle)
+    {
+
         Vector3 viscosityForce = Vector3.zero;
 
         foreach (int otherID in particle.neighbours)
         {
-            Particle other = particles[otherID];
-            if(particle.ID == other.ID) continue;
+            ParticleCPU other = particles[otherID];
+            if (particle.ID == other.ID) continue;
 
             float dist = (particle.position - other.position).magnitude;
             viscosityForce += (other.velocity - particle.velocity) * ViscosityLaplacianKernel(dist);

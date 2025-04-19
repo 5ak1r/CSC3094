@@ -2,13 +2,8 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-//https://www.youtube.com/watch?v=zbBwKMRyavE
-//https://www.youtube.com/watch?v=9M72KrGhYuE
-//https://matthias-research.github.io/pages/publications/sca03.pdf
-//https://cg.informatik.uni-freiburg.de/publications/2014_EG_SPH_STAR.pdf
-//https://www.slideserve.com/Mia_John/animation-of-fluids
-//https://mmacklin.com/pbf_sig_preprint.pdf
-
+//https://github.com/lijenicol/SPH-Fluid-Simulator/tree/master
+//https://peerdh.com/blogs/programming-insights/implementing-spatial-hashing-for-efficient-collision-detection-in-3d-environments
 public class SpatialHashCPU : MonoBehaviour
 {
 
@@ -32,14 +27,14 @@ public class SpatialHashCPU : MonoBehaviour
     }
 
     // sort keys for spatial lookup
-    public static Particle[] SortParticles(Particle[] particles)
+    public static ParticleCPU[] SortParticles(ParticleCPU[] particles)
     {
         Array.Sort(particles, (i, j) => i.hash.CompareTo(j.hash));
 
         return particles;
     }
 
-    public static Dictionary<uint, List<int>> NeighbourTable(Particle[] particles)
+    public static Dictionary<uint, List<int>> NeighbourTable(ParticleCPU[] particles)
     {
         Dictionary<uint, List<int>> neighbourTable = new();
 
@@ -58,7 +53,7 @@ public class SpatialHashCPU : MonoBehaviour
         return neighbourTable;
     }
 
-    public static HashSet<int> GetNeighbours(Dictionary<uint, List<int>> neighbourTable, Particle particle, Particle[] particles)
+    public static HashSet<int> GetNeighbours(Dictionary<uint, List<int>> neighbourTable, ParticleCPU particle, ParticleCPU[] particles)
     {
         HashSet<int> neighbours = new();
 

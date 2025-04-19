@@ -1,0 +1,94 @@
+#pragma kernel CalculateDensity
+#pragma kernel Integrate
+#pragma kernel ResolveCollisions
+
+struct ParticleGPU
+{
+    float pressure;
+    float density;
+
+    float3 currentForce;
+    float3 velocity;
+    float3 position;
+};
+
+RWStructuredBuffer<ParticleGPU> _particles;
+
+// particle properties
+float particleMass;
+float viscosity;
+float gasConstant;
+float targetDensity;
+
+float damping;
+
+float radius;
+float radius2;
+float radius3;
+float radius4;
+float radius5;
+
+int particleLength;
+
+// general properties
+
+float pi;
+
+float deltaTime;
+float3 boxSize;
+
+[numthreads(100,1,1)]
+void CalculateDensity(uint3 id: SV_DISPATCHTHREADID)
+{
+    float sum = 0;
+
+    for (int i = 0; i < particleLength; i++)
+    {
+        float3 dist = _particles[id.x].position - _particles[i].position;
+        float distSquared = dot(diff, diff);
+
+        if (radius2 > distSquared)
+        {
+            
+        }
+    }
+}
+
+[numthreads(100,1,1)]
+void Integrate(uint3 id: SV_DISPATCHTHREADID)
+{
+    _particles[id.x].velocity += ((_particles[id.x].currentForce / particleMass) * deltaTime);
+    _particles[id.x].position += _particles[id.x].velocity * deltaTime;
+}
+
+[numthreads(100,1,1)]
+void ResolveCollisions(uint3 id: SV_DISPATCHTHREADID)
+{
+    //box is drawn with negative values, centred at (0,0,0), so bottom of box = -boxSize / 2 and top = boxSize / 2
+    float3 bottom = -boxSize / 2;
+    float3 top = boxSize / 2;
+
+    if (_particles[id.x].position.y - radius < bottom.y) {
+        _particles[id.x].position.y = bottom.y + radius;
+        _particles[id.x].velocity.y *= damping;
+    } else if (_particles[id.x].position.y + radius > top.y) {
+        _particles[id.x].position.y = top.y - radius;
+        _particles[id.x].velocity.y *= damping;
+    }
+
+    if (_particles[id.x].position.x - radius < bottom.x) {
+        _particles[id.x].position.x = bottom.x + radius;
+        _particles[id.x].velocity.x *= damping;
+    } else if (_particles[id.x].position.x + radius > top.x) {
+        _particles[id.x].position.x = top.x - radius;
+        _particles[id.x].velocity.x *= damping;
+    }
+
+    if (_particles[id.x].position.z - radius < bottom.z) {
+        _particles[id.x].position.z = bottom.z + radius;
+        _particles[id.x].velocity.z *= damping;
+    } else if (_particles[id.x].position.z + radius > top.z) {
+        _particles[id.x].position.z = top.z - radius;
+        _particles[id.x].velocity.z *= damping;
+    }
+}
