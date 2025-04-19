@@ -1,4 +1,7 @@
+#pragma kernel ApplyGravity
 #pragma kernel CalculateDensity
+#pragma kernel CalculatePressure
+#pragma kernel CalculatePressureViscosityForce
 #pragma kernel Integrate
 #pragma kernel ResolveCollisions
 
@@ -31,11 +34,41 @@ float radius5;
 int particleLength;
 
 // general properties
-
 float pi;
+float epsilon;
+float gravity;
 
 float deltaTime;
 float3 boxSize;
+
+// kernels
+float Poly6(float distSquared)
+{
+    float x = 1.0f - distSquared / radius2;
+    return 315.0f / (64.0f * pi * radius3) * x * x * x;  
+}
+
+float SpikyKernelFirstDerivative(float dist)
+{
+    float x = 1.0f - dist / radius;
+    return -45.0f / (pi * radius4) * x * x;
+}
+
+float3 SpikyKernelGradient(float dist, float3 dir)
+{
+    return SpikyKernelFirstDerivative(dist) * dir;
+}
+
+float ViscosityLaplacian(float dist)
+{
+    return 90.0f / (pi * radius5) * (1 - dist / radius);
+}
+
+[numthreads(100,1,1)]
+void ApplyGravity(uint id: SV_DISPATCHTHREADID)
+{
+    _particles[id.x].currentForce = float3(0,gravity,0) * particleMass;
+}
 
 [numthreads(100,1,1)]
 void CalculateDensity(uint3 id: SV_DISPATCHTHREADID)
@@ -45,19 +78,60 @@ void CalculateDensity(uint3 id: SV_DISPATCHTHREADID)
     for (int i = 0; i < particleLength; i++)
     {
         float3 dist = _particles[id.x].position - _particles[i].position;
-        float distSquared = dot(diff, diff);
+        float distSquared = dot(dist, dist);
 
-        if (radius2 > distSquared)
+        if (distSquared < radius2) 
         {
-            
+            sum += Poly6(distSquared);
         }
     }
+
+    _particles[id.x].density = sum * particleMass + epsilon;
+}
+
+[numthreads(100,1,1)]
+void CalculatePressure(uint3 id: SV_DISPATCHTHREADID)
+{
+    _particles[id.x].pressure = gasConstant * (_particles[id.x].density - targetDensity);
+}
+
+[numthreads(100,1,1)]
+void CalculatePressureViscosityForce(uint3 id: SV_DISPATCHTHREADID)
+{
+    float3 pressureForce = float3(0,0,0);
+    float3 viscosityForce = float3(0,0,0);
+    float density2 = _particles[id.x].density * _particles[id.x].density;
+    float mass2 = particleMass * particleMass;
+
+    for(int i = 0; i < particleLength; i++)
+    {
+        if ((uint)i == id.x) continue;
+
+        float3 offset = _particles[id.x].position - _particles[i].position;
+        float dist = distance(_particles[i].position, _particles[id.x].position);
+
+        if (dist < radius * 2)
+        {
+            float3 dir = normalize(offset);
+            float3 pressureContribution = mass2 * SpikyKernelGradient(dist, dir);
+            pressureContribution *= (_particles[id.x].pressure / density2) + _particles[i].pressure / (_particles[i].density * _particles[i].density);
+            
+            float3 viscosityContribution = viscosity * mass2 * ViscosityLaplacian(dist);
+            viscosityContribution *= (_particles[i].velocity - _particles[id.x].velocity) / _particles[i].density;
+
+            pressureForce += pressureContribution;
+            viscosityForce += viscosityContribution;
+        }
+
+    }
+
+    _particles[id.x].currentForce += viscosityForce - pressureForce;
 }
 
 [numthreads(100,1,1)]
 void Integrate(uint3 id: SV_DISPATCHTHREADID)
 {
-    _particles[id.x].velocity += ((_particles[id.x].currentForce / particleMass) * deltaTime);
+    _particles[id.x].velocity += _particles[id.x].currentForce * deltaTime;
     _particles[id.x].position += _particles[id.x].velocity * deltaTime;
 }
 
@@ -68,26 +142,29 @@ void ResolveCollisions(uint3 id: SV_DISPATCHTHREADID)
     float3 bottom = -boxSize / 2;
     float3 top = boxSize / 2;
 
-    if (_particles[id.x].position.y - radius < bottom.y) {
-        _particles[id.x].position.y = bottom.y + radius;
-        _particles[id.x].velocity.y *= damping;
-    } else if (_particles[id.x].position.y + radius > top.y) {
-        _particles[id.x].position.y = top.y - radius;
-        _particles[id.x].velocity.y *= damping;
-    }
-
     if (_particles[id.x].position.x - radius < bottom.x) {
         _particles[id.x].position.x = bottom.x + radius;
         _particles[id.x].velocity.x *= damping;
-    } else if (_particles[id.x].position.x + radius > top.x) {
+    }
+    else if (_particles[id.x].position.x + radius > top.x) {
         _particles[id.x].position.x = top.x - radius;
         _particles[id.x].velocity.x *= damping;
+    }
+
+    if (_particles[id.x].position.y - radius < bottom.y) {
+        _particles[id.x].position.y = bottom.y + radius;
+        _particles[id.x].velocity.y *= damping;
+    }
+    else if (_particles[id.x].position.y + radius > top.y) {
+        _particles[id.x].position.y = top.y - radius;
+        _particles[id.x].velocity.y *= damping;
     }
 
     if (_particles[id.x].position.z - radius < bottom.z) {
         _particles[id.x].position.z = bottom.z + radius;
         _particles[id.x].velocity.z *= damping;
-    } else if (_particles[id.x].position.z + radius > top.z) {
+    }
+    else if (_particles[id.x].position.z + radius > top.z) {
         _particles[id.x].position.z = top.z - radius;
         _particles[id.x].velocity.z *= damping;
     }

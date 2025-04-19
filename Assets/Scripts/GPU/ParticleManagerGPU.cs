@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 //https://www.youtube.com/watch?v=zbBwKMRyavE
 //https://www.youtube.com/watch?v=BrZ4pWwkpto
@@ -13,7 +14,7 @@ public struct ParticleGPU
     public float pressure;
     public float density;
 
-    public Vector3 currentForce;
+    public Vector3 currentAcceleration;
     public Vector3 velocity;
     public Vector3 position;
 }
@@ -22,6 +23,7 @@ public class ParticleManagerGPU : MonoBehaviour
 {
     [Header("General")]
     public bool showSpheres = true;
+    public Transform sphere;
     public Vector3Int rowCount = new(10, 10, 10);
     private int ParticleCount
     {
@@ -48,6 +50,10 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particlesBuffer;
+    private int ApplyGravityKernel;
+    private int CalculateDensityKernel;
+    private int CalculatePressureKernel;
+    private int CalculatePressureViscosityForceKernel;
     private int IntegrateKernel;
     private int ResolveCollisionsKernel;
 
@@ -57,6 +63,7 @@ public class ParticleManagerGPU : MonoBehaviour
     public float particleMass = 1.0f;
     public float gasConstant = 2.0f;
     public float targetDensity = 1.0f;
+    public float gravity = -9.81f;
     public float deltaTime = 0.007f;
 
     [Header("Properties")]
@@ -127,6 +134,10 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetVector("boxSize", boxSize);
         computeShader.SetFloat("deltaTime", deltaTime);
 
+        computeShader.Dispatch(ApplyGravityKernel, ParticleCount / 100, 1, 1);
+        computeShader.Dispatch(CalculateDensityKernel, ParticleCount / 100, 1, 1);
+        computeShader.Dispatch(CalculatePressureKernel, ParticleCount / 100, 1, 1);
+        computeShader.Dispatch(CalculatePressureViscosityForceKernel, ParticleCount / 100, 1, 1);
         computeShader.Dispatch(IntegrateKernel, ParticleCount / 100, 1, 1);
         computeShader.Dispatch(ResolveCollisionsKernel, ParticleCount / 100, 1, 1);
     }
@@ -159,6 +170,10 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private void SetUpComputeBuffers()
     {
+        ApplyGravityKernel = computeShader.FindKernel("ApplyGravity");
+        CalculateDensityKernel = computeShader.FindKernel("CalculateDensity");
+        CalculatePressureKernel = computeShader.FindKernel("CalculatePressure");
+        CalculatePressureViscosityForceKernel = computeShader.FindKernel("CalculatePressureViscosityForce");
         IntegrateKernel = computeShader.FindKernel("Integrate");
         ResolveCollisionsKernel = computeShader.FindKernel("ResolveCollisions");
 
@@ -173,14 +188,21 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetFloat("radius2", particleRadius * particleRadius);
         computeShader.SetFloat("radius3", particleRadius * particleRadius * particleRadius);
         computeShader.SetFloat("radius4", particleRadius * particleRadius * particleRadius * particleRadius);
+        computeShader.SetFloat("radius5", particleRadius * particleRadius * particleRadius * particleRadius * particleRadius);
 
         computeShader.SetInt("particleLength", ParticleCount);
 
         computeShader.SetFloat("pi", Mathf.PI);
+        computeShader.SetFloat("epsilon", 1e-5f);
+        computeShader.SetFloat("gravity", gravity);
         
         computeShader.SetFloat("deltaTime", deltaTime);
         computeShader.SetVector("boxSize", boxSize);
 
+        computeShader.SetBuffer(ApplyGravityKernel, "_particles", _particlesBuffer);
+        computeShader.SetBuffer(CalculateDensityKernel, "_particles", _particlesBuffer);
+        computeShader.SetBuffer(CalculatePressureKernel, "_particles", _particlesBuffer);
+        computeShader.SetBuffer(CalculatePressureViscosityForceKernel, "_particles", _particlesBuffer);
         computeShader.SetBuffer(IntegrateKernel, "_particles", _particlesBuffer);
         computeShader.SetBuffer(ResolveCollisionsKernel, "_particles", _particlesBuffer);
     }
