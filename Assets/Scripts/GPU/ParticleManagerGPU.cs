@@ -23,7 +23,7 @@ public class ParticleManagerGPU : MonoBehaviour
 {
     [Header("General")]
     public bool showSpheres = true;
-    public Transform sphere;
+    public Transform collisionSphere;
     public Vector3Int rowCount = new(10, 10, 10);
     private int ParticleCount
     {
@@ -134,6 +134,9 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetVector("boxSize", boxSize);
         computeShader.SetFloat("deltaTime", deltaTime);
 
+        computeShader.SetVector("collisionPosition", collisionSphere.transform.position);
+        computeShader.SetFloat("collisionRadius", collisionSphere.transform.localScale.x / 2.0f);
+
         computeShader.Dispatch(ApplyGravityKernel, ParticleCount / 100, 1, 1);
         computeShader.Dispatch(CalculateDensityKernel, ParticleCount / 100, 1, 1);
         computeShader.Dispatch(CalculatePressureKernel, ParticleCount / 100, 1, 1);
@@ -142,27 +145,31 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.Dispatch(ResolveCollisionsKernel, ParticleCount / 100, 1, 1);
     }
 
+    private void OnDestroy()
+    {
+        _argsBuffer.Release();
+        _particlesBuffer.Release();
+    }
+
     private void SpawnParticles()
     {
         List<ParticleGPU> _particles = new();
 
-        for (int x = 0; x < rowCount.x; x++)
+        for (int i = 0; i < rowCount.x * rowCount.y * rowCount.z; i++)
         {
-            for (int y = 0; y < rowCount.y; y++)
+            int x = i % rowCount.x;
+            int y = i / rowCount.x % rowCount.y;
+            int z = i / (rowCount.x * rowCount.y);
+
+            Vector3 spawnPos = spawnPoint + 2 * particleRadius * new Vector3(x, y, z);
+            spawnPos += jitter * particleRadius * Random.onUnitSphere;
+
+            ParticleGPU particle = new()
             {
-                for (int z = 0; z < rowCount.z; z++)
-                {
-                    Vector3 spawnPos = spawnPoint + 2 * particleRadius * new Vector3(x, y, z);
-                    spawnPos += jitter * particleRadius * Random.onUnitSphere;
+                position = spawnPos
+            };
 
-                    ParticleGPU particle = new()
-                    {
-                        position = spawnPos
-                    };
-
-                    _particles.Add(particle);
-                }
-            }
+            _particles.Add(particle);
         }
 
         particles = _particles.ToArray();

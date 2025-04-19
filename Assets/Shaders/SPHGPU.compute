@@ -41,6 +41,9 @@ float gravity;
 float deltaTime;
 float3 boxSize;
 
+float3 collisionPosition;
+float collisionRadius;
+
 // kernels
 float Poly6(float distSquared)
 {
@@ -126,6 +129,9 @@ void CalculatePressureViscosityForce(uint3 id: SV_DISPATCHTHREADID)
     }
 
     _particles[id.x].currentForce += viscosityForce - pressureForce;
+
+    float3 collisionDir = _particles[id.x].position - collisionPosition;
+    if (length(collisionDir) < collisionRadius) _particles[id.x].currentForce += collisionDir * 300.0f;
 }
 
 [numthreads(100,1,1)]
