@@ -35,7 +35,7 @@ public class ParticleManagerGPU : MonoBehaviour
 
     public Vector3 boxSize = new(4, 10, 3);
     public Vector3 spawnPoint;
-    public float particleRadius = 1.0f;
+    public float particleRadius = 0.1f;
     public float jitter = 0.2f;
 
     [Header("Particle Rendering")]
@@ -59,6 +59,7 @@ public class ParticleManagerGPU : MonoBehaviour
     private ComputeBuffer _particleIndicesBuffer;
     private ComputeBuffer _cellIndicesBuffer;
     private ComputeBuffer _lookupTableBuffer;
+    private int ClearLookupTableKernel;
     private int ApplyHashKernel;
     private int BitonicSortKernel;
     private int CompleteLookupKernel;
@@ -69,13 +70,11 @@ public class ParticleManagerGPU : MonoBehaviour
     public float particleMass = 1.0f;
     public float gasConstant = 2.0f;
     public float targetDensity = 1.0f;
-    public float gravity = -9.81f;
     public float deltaTime = 0.007f;
 
     [Header("Properties")]
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticlesBufferProperty = Shader.PropertyToID("_particlesBuffer");
-
 
     private void Awake()
     {
@@ -107,6 +106,8 @@ public class ParticleManagerGPU : MonoBehaviour
         _particleIndicesBuffer.SetData(particleIndices);
 
         SetUpComputeBuffers();
+
+        computeShader.Dispatch(IntegrateKernel, ParticleCount / 256, 1, 1);
     }
 
     private void OnDrawGizmos()
@@ -145,6 +146,11 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private void FixedUpdate()
     {
+        computeShader.SetFloat("particleMass", particleMass);
+        computeShader.SetFloat("viscosity", viscosity);
+        computeShader.SetFloat("gasConstant", gasConstant);
+        computeShader.SetFloat("targetDensity", targetDensity);
+
         computeShader.SetVector("boxSize", boxSize);
         computeShader.SetFloat("deltaTime", deltaTime);
 
@@ -152,6 +158,7 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetFloat("collisionRadius", collisionSphere.transform.localScale.x / 2.0f);
 
         //spatial hash calculations
+        computeShader.Dispatch(ClearLookupTableKernel, ParticleCount / 256, 1, 1);
         computeShader.Dispatch(ApplyHashKernel, ParticleCount / 256, 1, 1);
         SortParticles();
         computeShader.Dispatch(CompleteLookupKernel, ParticleCount / 256, 1, 1);
@@ -211,6 +218,7 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private void SetUpComputeBuffers()
     {
+        ClearLookupTableKernel = computeShader.FindKernel("ClearLookupTable");
         ApplyHashKernel = computeShader.FindKernel("ApplyHash");
         BitonicSortKernel = computeShader.FindKernel("BitonicSort");
         CompleteLookupKernel = computeShader.FindKernel("CompleteLookup");
@@ -236,7 +244,6 @@ public class ParticleManagerGPU : MonoBehaviour
 
         computeShader.SetFloat("pi", Mathf.PI);
         computeShader.SetFloat("epsilon", 1e-5f);
-        computeShader.SetFloat("gravity", gravity);
         
         computeShader.SetFloat("deltaTime", deltaTime);
         computeShader.SetVector("boxSize", boxSize);
@@ -259,6 +266,7 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetBuffer(CalculateDensityPressureKernel, "_cellIndices", _cellIndicesBuffer);
         computeShader.SetBuffer(CalculatePressureViscosityForceKernel, "_cellIndices", _cellIndicesBuffer);
 
+        computeShader.SetBuffer(ClearLookupTableKernel, "_lookupTable", _lookupTableBuffer);
         computeShader.SetBuffer(ApplyHashKernel, "_lookupTable", _lookupTableBuffer);
         computeShader.SetBuffer(CompleteLookupKernel, "_lookupTable", _lookupTableBuffer);
         computeShader.SetBuffer(CalculateDensityPressureKernel, "_lookupTable", _lookupTableBuffer);

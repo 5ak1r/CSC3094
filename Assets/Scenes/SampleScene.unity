@@ -492,23 +492,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   showSpheres: 1
   collisionSphere: {fileID: 549282967}
-  rowCount: {x: 16, y: 16, z: 16}
-  boxSize: {x: 4, y: 10, z: 3}
-  spawnPoint: {x: -1, y: 3, z: -1}
+  rowCount: {x: 32, y: 32, z: 32}
+  boxSize: {x: 8.67, y: 10, z: 7}
+  spawnPoint: {x: 0.07, y: -3.63, z: -0.68}
   particleRadius: 0.1
-  jitter: 0.2
+  jitter: 0.4
   particleMesh: {fileID: 2540817853737639666, guid: 57024805ae6483140b44959915718c4c, type: 3}
   material: {fileID: 2100000, guid: 6011076ac99d154458413d12831ddc33, type: 2}
   particleRenderSize: 8
   computeShader: {fileID: 7200000, guid: 4d412b5173089a34d8631082035334e9, type: 3}
   particles: []
   damping: -0.3
-  viscosity: -0.003
+  viscosity: -0.001
   particleMass: 1
   gasConstant: 2
   targetDensity: 1
-  gravity: -9.81
-  deltaTime: 0.007
+  deltaTime: 0.001
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
