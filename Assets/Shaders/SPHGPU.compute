@@ -1,6 +1,7 @@
-#pragma kernel ApplyGravity
-#pragma kernel CalculateDensity
-#pragma kernel CalculatePressure
+#pragma kernel ApplyHash
+#pragma kernel BitonicSort
+#pragma kernel CompleteLookup
+#pragma kernel CalculateDensityPressure
 #pragma kernel CalculatePressureViscosityForce
 #pragma kernel Integrate
 #pragma kernel ResolveCollisions
@@ -16,6 +17,9 @@ struct ParticleGPU
 };
 
 RWStructuredBuffer<ParticleGPU> _particles;
+RWStructuredBuffer<uint> _particleIndices;
+RWStructuredBuffer<uint> _cellIndices;
+RWStructuredBuffer<uint> _lookupTable;
 
 // particle properties
 float particleMass;
@@ -31,7 +35,7 @@ float radius3;
 float radius4;
 float radius5;
 
-int particleLength;
+uint particleCount;
 
 // general properties
 float pi;
@@ -41,107 +45,220 @@ float gravity;
 float deltaTime;
 float3 boxSize;
 
+// collision sphere properties
 float3 collisionPosition;
 float collisionRadius;
 
+//bitonic sort properties
+int block;
+int dim;
+
 // kernels
-float Poly6(float distSquared)
+inline float Poly6(in float distSquared)
 {
     float x = 1.0f - distSquared / radius2;
     return 315.0f / (64.0f * pi * radius3) * x * x * x;  
 }
 
-float SpikyKernelFirstDerivative(float dist)
+inline float SpikyKernelFirstDerivative(in float dist)
 {
     float x = 1.0f - dist / radius;
     return -45.0f / (pi * radius4) * x * x;
 }
 
-float3 SpikyKernelGradient(float dist, float3 dir)
+inline float3 SpikyKernelGradient(in float dist, in float3 dir)
 {
     return SpikyKernelFirstDerivative(dist) * dir;
 }
 
-float ViscosityLaplacian(float dist)
+inline float ViscosityLaplacian(in float dist)
 {
     return 90.0f / (pi * radius5) * (1 - dist / radius);
 }
 
-[numthreads(100,1,1)]
-void ApplyGravity(uint id: SV_DISPATCHTHREADID)
+//spatial hashing
+inline int3 CalculateCell(in float3 pos)
 {
-    _particles[id.x].currentForce = float3(0,gravity,0) * particleMass;
+    // since box is on negatives, add half the box size to prevent negatives
+    float3 boxHalf = boxSize / 2;
+
+    return int3((pos.x + boxHalf.x) / radius,
+                (pos.y + boxHalf.y) / radius,
+                (pos.z + boxHalf.z) / radius);
 }
 
-[numthreads(100,1,1)]
-void CalculateDensity(uint3 id: SV_DISPATCHTHREADID)
+inline uint CalculateHash (in int3 cellIndex)
 {
+    uint hash = (cellIndex.x * 73856093 ^
+                 cellIndex.y * 19349663 ^
+                 cellIndex.z * 83492791);
+    
+    hash %= particleCount;
+    
+    return hash;
+}
+
+[numthreads(256,1,1)]
+void ApplyHash(uint id: SV_DISPATCHTHREADID)
+{
+    _lookupTable[id.x] = 0xFFFFFFFF;
+
+    uint particleIndex = _particleIndices[id.x];
+    _cellIndices[particleIndex] = CalculateHash(CalculateCell(_particles[particleIndex].position));
+}
+
+[numthreads(256,1,1)]
+void BitonicSort(uint3 id: SV_DISPATCHTHREADID)
+{
+    uint i = id.x + id.y * 256 * 1024;
+    uint j = i ^ block;
+
+    if (j < i || i >= particleCount) return;
+
+    uint keyI = _particleIndices[i];
+    uint keyJ = _particleIndices[j];
+    float valueI = _cellIndices[keyI];
+    float valueJ = _cellIndices[keyJ];
+
+    float diff = (valueI - valueJ) * ((i & block) == 0 ? 1 : -1);
+
+    if (diff > 0)
+    {
+        _particleIndices[i] = keyJ;
+        _particleIndices[j] = keyI;
+    }
+}
+
+[numthreads(256,1,1)]
+void CompleteLookup(uint id: SV_DISPATCHTHREADID)
+{
+    uint particleIndex = _particleIndices[id.x];
+    uint cellIndex = _cellIndices[particleIndex];
+    
+    InterlockedMin(_lookupTable[cellIndex], id.x);
+}
+
+[numthreads(256,1,1)]
+void CalculateDensityPressure(uint3 id: SV_DISPATCHTHREADID)
+{
+    uint particleIndex = _particleIndices[id.x];
+    int3 cellIndex = CalculateCell(_particles[particleIndex].position);
+
     float sum = 0;
 
-    for (int i = 0; i < particleLength; i++)
+    for (uint i = 0; i < 125; i++)
     {
-        float3 dist = _particles[id.x].position - _particles[i].position;
-        float distSquared = dot(dist, dist);
+        int x = (i / 25) % 5 - 2; //starting at -2 so must subtract 2
+        int y = (i / 5) % 5 - 2;
+        int z = i % 5 - 2;
 
-        if (distSquared < radius2) 
+        int3 neighbourIndex = cellIndex + int3(x, y, z);
+        uint hashedNeighbour = CalculateHash(neighbourIndex);
+
+        uint start = _lookupTable[hashedNeighbour];
+
+        while (start != 0xFFFFFFFF && start < particleCount)
         {
-            sum += Poly6(distSquared);
+            uint otherIndex = _particleIndices[start];
+
+            if (_cellIndices[otherIndex] != hashedNeighbour)
+            {
+                break; //all neighbours in this cell found; no need to continue
+            }
+
+            ParticleGPU other = _particles[otherIndex];
+
+            float3 dist = _particles[particleIndex].position - other.position;
+            float distSquared = dot(dist, dist);
+
+            if (distSquared < radius2) 
+            {
+                sum += Poly6(distSquared);
+            }
+            
+            start++;
         }
     }
 
-    _particles[id.x].density = sum * particleMass + epsilon;
+    _particles[particleIndex].density = sum * particleMass + epsilon;
+    _particles[particleIndex].pressure = max(0, gasConstant * (_particles[particleIndex].density - targetDensity));
 }
 
-[numthreads(100,1,1)]
-void CalculatePressure(uint3 id: SV_DISPATCHTHREADID)
-{
-    _particles[id.x].pressure = gasConstant * (_particles[id.x].density - targetDensity);
-}
-
-[numthreads(100,1,1)]
+[numthreads(256,1,1)]
 void CalculatePressureViscosityForce(uint3 id: SV_DISPATCHTHREADID)
 {
+    uint particleIndex = _particleIndices[id.x];
+    int3 cellIndex = CalculateCell(_particles[particleIndex].position);
+
     float3 pressureForce = float3(0,0,0);
     float3 viscosityForce = float3(0,0,0);
-    float density2 = _particles[id.x].density * _particles[id.x].density;
+
+    float density2 = _particles[particleIndex].density * _particles[particleIndex].density;
     float mass2 = particleMass * particleMass;
 
-    for(int i = 0; i < particleLength; i++)
+    for (uint i = 0; i < 125; i++)
     {
-        if ((uint)i == id.x) continue;
+        int x = (i / 25) - 2; //starting at -2 so must subtract 2
+        int y = (i / 5) % 5 - 2;
+        int z = i % 5 - 2;
 
-        float3 offset = _particles[id.x].position - _particles[i].position;
-        float dist = distance(_particles[i].position, _particles[id.x].position);
+        int3 neighbourIndex = cellIndex + int3(x, y, z);
+        uint hashedNeighbour = CalculateHash(neighbourIndex);
 
-        if (dist < radius * 2)
+        uint start = _lookupTable[hashedNeighbour];
+
+        while (start != 0xFFFFFFFF && start < particleCount)
         {
-            float3 dir = normalize(offset);
-            float3 pressureContribution = mass2 * SpikyKernelGradient(dist, dir);
-            pressureContribution *= (_particles[id.x].pressure / density2) + _particles[i].pressure / (_particles[i].density * _particles[i].density);
-            
-            float3 viscosityContribution = viscosity * mass2 * ViscosityLaplacian(dist);
-            viscosityContribution *= (_particles[i].velocity - _particles[id.x].velocity) / _particles[i].density;
+            uint otherIndex = _particleIndices[start];
 
-            pressureForce += pressureContribution;
-            viscosityForce += viscosityContribution;
+            if (_cellIndices[otherIndex] != hashedNeighbour)
+            {
+                break; //all neighbours in this cell found; no need to continue
+            }
+
+            if (particleIndex == otherIndex) {
+                start++;
+                continue;
+            }
+
+            ParticleGPU other = _particles[otherIndex];
+
+            float3 offset = _particles[particleIndex].position - other.position;
+            float distSquared = dot(offset, offset);
+
+            if (distSquared < radius2)
+            {
+                float dist = sqrt(distSquared);
+                float3 dir = normalize(offset);
+                float3 pressureContribution = particleMass * SpikyKernelGradient(dist, dir);
+                pressureContribution *= (_particles[particleIndex].pressure + other.pressure) / (other.density * other.density);
+                
+                float3 viscosityContribution = viscosity * mass2 * ViscosityLaplacian(dist);
+                viscosityContribution *= (other.velocity - _particles[particleIndex].velocity) / other.density;
+
+                pressureForce += pressureContribution;
+                viscosityForce += viscosityContribution;
+            }
+
+            start++;
         }
-
     }
 
-    _particles[id.x].currentForce += viscosityForce - pressureForce;
 
-    float3 collisionDir = _particles[id.x].position - collisionPosition;
-    if (length(collisionDir) < collisionRadius) _particles[id.x].currentForce += collisionDir * 300.0f;
+    _particles[particleIndex].currentForce = float3(0, gravity * particleMass, 0) + viscosityForce - pressureForce;
+
+    float3 collisionDir = _particles[particleIndex].position - collisionPosition;
+    if (length(collisionDir) < collisionRadius) _particles[particleIndex].currentForce += collisionDir * 300;
 }
 
-[numthreads(100,1,1)]
+[numthreads(256,1,1)]
 void Integrate(uint3 id: SV_DISPATCHTHREADID)
 {
     _particles[id.x].velocity += _particles[id.x].currentForce * deltaTime;
     _particles[id.x].position += _particles[id.x].velocity * deltaTime;
 }
 
-[numthreads(100,1,1)]
+[numthreads(256,1,1)]
 void ResolveCollisions(uint3 id: SV_DISPATCHTHREADID)
 {
     //box is drawn with negative values, centred at (0,0,0), so bottom of box = -boxSize / 2 and top = boxSize / 2

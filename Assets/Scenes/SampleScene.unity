@@ -492,7 +492,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   showSpheres: 1
   collisionSphere: {fileID: 549282967}
-  rowCount: {x: 10, y: 10, z: 10}
+  rowCount: {x: 16, y: 16, z: 16}
   boxSize: {x: 4, y: 10, z: 3}
   spawnPoint: {x: -1, y: 3, z: -1}
   particleRadius: 0.1
@@ -508,7 +508,7 @@ MonoBehaviour:
   gasConstant: 2
   targetDensity: 1
   gravity: -9.81
-  deltaTime: 0.005
+  deltaTime: 0.007
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

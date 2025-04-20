@@ -228,12 +228,6 @@ public class ParticleManagerCPU : MonoBehaviour
         return -45.0f / (Mathf.PI * PARTICLE_EFFECT_RADIUS_FOURTH) * x * x;
     }
 
-    public float SpikyKernelSecondDerivative(float dist)
-    {
-        float x = 1.0f - dist / PARTICLE_EFFECT_RADIUS;
-        return 90.0f / (Mathf.PI * PARTICLE_EFFECT_RADIUS_FIFTH) * x;
-    }
-
     public Vector3 SpikyKernelGradient(float dist, Vector3 dir)
     {
         return SpikyKernelFirstDerivative(dist) * dir;

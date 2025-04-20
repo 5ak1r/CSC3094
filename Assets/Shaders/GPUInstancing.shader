@@ -39,6 +39,7 @@ Shader "Instanced/GridTestParticleShader" {
 
 		#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
 			StructuredBuffer<Particle> _particlesBuffer;
+			StructuredBuffer<uint> _cellIndices;
 		#endif
 
 			void setup()
@@ -62,6 +63,10 @@ Shader "Instanced/GridTestParticleShader" {
 
 			void surf(Input IN, inout SurfaceOutputStandard o) {
 				float4 col = float4(_Color, 1.0);
+				#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
+					float press = (_particlesBuffer[unity_InstanceID].pressure * 0.03)/300;
+					col = float4(press, press, press, 1.0);
+				#endif
 				o.Albedo = col.rgb;
 			}
 			ENDCG
