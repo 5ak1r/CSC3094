@@ -135,7 +135,7 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.Dispatch(CalculateForcesKernel, ParticleCount / 256, 1, 1);
         computeShader.Dispatch(MoveParticlesKernel, ParticleCount / 256, 1, 1);
 
-        _particlesBuffer.GetData(particles);
+        //_particlesBuffer.GetData(particles);
     }
 
     private void OnDestroy()
