@@ -74,13 +74,13 @@ void CalculateProperties(int id: SV_DISPATCHTHREADID)
     }
 
     _particles[id.x].density = density + epsilon;
-    _particles[id.x].pressure = gasConstant * (density - restDensity);
+    _particles[id.x].pressure = max(0, gasConstant * (_particles[id.x].density - restDensity));
 }
 
 [numthreads(256,1,1)]
 void CalculateForces(int id: SV_DISPATCHTHREADID)
 {
-    float3 gravityForce = float3(0, -9.81, 0) * _particles[id.x].density;
+    float3 gravityForce = float3(0, -9.81, 0) * particleMass;
     float3 pressureForce = float3(0,0,0);
     float3 viscosityForce = float3(0,0,0);
 
@@ -94,7 +94,6 @@ void CalculateForces(int id: SV_DISPATCHTHREADID)
         if (distance2 < smoothingRadius2)
         {   
             float distance = sqrt(distance2);
-
             pressureForce -= particleMass * (_particles[id.x].pressure + _particles[i].pressure) / (2 * _particles[i].density) * SpikyGradient(distance, normalize(offset));
             viscosityForce += particleMass * (_particles[i].velocity - _particles[id.x].velocity) / _particles[i].density * ViscosityLaplacian(distance);
         }
@@ -108,37 +107,37 @@ void MoveParticles(int id: SV_DISPATCHTHREADID)
 {
     float damping = -0.3;
 
-    float3 vel = _particles[id.x].velocity + deltaTime * _particles[id.x].forces / _particles[id.x].density; //v = u + at, F = ma
+    float3 vel = _particles[id.x].velocity + deltaTime * _particles[id.x].forces / particleMass; //v = u + at, F = ma
     float3 pos = _particles[id.x].position + vel * deltaTime;
 
-    if (pos.x - smoothingRadius <= 0) 
+    if (pos.x - smoothingRadius < 0) 
     {
         pos.x = smoothingRadius;
         vel.x *= damping;
     }
-    else if (pos.x + smoothingRadius >= boxDimensions.x)
+    else if (pos.x + smoothingRadius > boxDimensions.x)
     {
         pos.x = boxDimensions.x - smoothingRadius;
         vel.x *= damping;
     }
 
-    if (pos.y - smoothingRadius <= 0)
+    if (pos.y - smoothingRadius < 0)
     {
         pos.y = smoothingRadius;
         vel.y *= damping;
     }
-    else if (pos.y + smoothingRadius >= boxDimensions.y)
+    else if (pos.y + smoothingRadius > boxDimensions.y)
     {
         pos.y = boxDimensions.y - smoothingRadius;
         vel.y *= damping;
     }
 
-    if (pos.z - smoothingRadius <= 0)
+    if (pos.z - smoothingRadius < 0)
     {
         pos.z = smoothingRadius;
         vel.z *= damping;
     }
-    else if (pos.z + smoothingRadius >= boxDimensions.z) {
+    else if (pos.z + smoothingRadius > boxDimensions.z) {
         pos.z = boxDimensions.z - smoothingRadius;
         vel.z *= damping;
     }

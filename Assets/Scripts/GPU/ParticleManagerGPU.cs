@@ -124,6 +124,7 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private void FixedUpdate()
     {
+        computeShader.SetVector("boxDimensions", boxDimensions);
         computeShader.SetFloat("deltaTime", deltaTime);
         computeShader.SetFloat("particleMass", particleMass);
         computeShader.SetFloat("restDensity", restDensity);
@@ -133,6 +134,8 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.Dispatch(CalculatePropertiesKernel, ParticleCount / 256, 1, 1);
         computeShader.Dispatch(CalculateForcesKernel, ParticleCount / 256, 1, 1);
         computeShader.Dispatch(MoveParticlesKernel, ParticleCount / 256, 1, 1);
+
+        _particlesBuffer.GetData(particles);
     }
 
     private void OnDestroy()

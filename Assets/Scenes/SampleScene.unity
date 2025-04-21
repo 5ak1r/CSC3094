@@ -383,12 +383,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   showSpheres: 1
-  rowCount: {x: 32, y: 32, z: 32}
+  rowCount: {x: 16, y: 16, z: 16}
   epsilon: 0.00001
-  deltaTime: 0.003
-  particleRadius: 0.1
+  deltaTime: 0.005
+  particleRadius: 0.2
   boxDimensions: {x: 4, y: 10, z: 3}
-  spawnPoint: {x: -2, y: 8, z: -2}
+  spawnPoint: {x: 1, y: 1, z: 1}
   jitter: 0.4
   particleMesh: {fileID: 2540817853737639666, guid: 57024805ae6483140b44959915718c4c, type: 3}
   material: {fileID: 2100000, guid: 6011076ac99d154458413d12831ddc33, type: 2}
@@ -396,9 +396,9 @@ MonoBehaviour:
   computeShader: {fileID: 7200000, guid: 4d412b5173089a34d8631082035334e9, type: 3}
   particles: []
   particleMass: 1
-  restDensity: 1000
+  restDensity: 1
   gasConstant: 2
-  viscosity: 3
+  viscosity: 0.003
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
