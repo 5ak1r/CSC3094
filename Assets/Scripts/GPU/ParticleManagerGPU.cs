@@ -125,18 +125,17 @@ public class ParticleManagerGPU : MonoBehaviour
         material.SetFloat(SizeProperty, particleRenderSize);
         material.SetBuffer(ParticlesBufferProperty, _particlesBuffer);
 
-        if (showSpheres)
-        {
-            Graphics.DrawMeshInstancedIndirect
-            (
-                particleMesh,
-                0,
-                material,
-                new Bounds(Vector3.zero, boxDimensions),
-                _argsBuffer,
-                castShadows: UnityEngine.Rendering.ShadowCastingMode.Off
-            );
-        }   
+        if (!showSpheres) return;
+
+        Graphics.DrawMeshInstancedIndirect
+        (
+            particleMesh,
+            0,
+            material,
+            new Bounds(Vector3.zero, boxDimensions),
+            _argsBuffer,
+            castShadows: UnityEngine.Rendering.ShadowCastingMode.Off
+        );
     }
 
     private void FixedUpdate()

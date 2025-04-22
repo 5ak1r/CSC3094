@@ -1,86 +1,115 @@
-//https://github.com/AJTech2002/Smoothed-Particle-Hydrodynamics/blob/youtube-base/Assets/Shaders/GridParticle.shader
-
-Shader "Instanced/GridTestParticleShader" {
-	Properties{
-		_MainTex("Albedo (RGB)", 2D) = "white" {}
+Shader "Instanced/GridTestParticleShader"
+{
+	Properties
+	{
 		_Glossiness("Smoothness", Range(0,1)) = 0.5
 		_Metallic("Metallic", Range(0,1)) = 0.0
         _Color("Color", Color) = (0.25, 0.5, 0.5, 1)
 		_DensityRange ("Density Range", Range(0,500000)) = 1.0
 	}
-		SubShader{
-			Tags { "RenderType" = "Opaque" }
-			LOD 200
+
+	SubShader
+	{
+		Tags { "RenderType" = "Opaque" }
+		LOD 200
+
+		Pass
+		{
 
 			CGPROGRAM
-			// Physically based Standard lighting model
-			#pragma surface surf Standard addshadow fullforwardshadows
+			#pragma vertex vert
+			#pragma fragment frag
 			#pragma multi_compile_instancing
 			#pragma instancing_options procedural:setup
 
-			sampler2D _MainTex;
-			float _size;
-            float3 _Color;
-			float _DensityRange;
+			#include "UnityCG.cginc"
 
-			struct Input {
-				float2 uv_MainTex;
-			};
+			float _Glossiness;
+			float _Metallic;
+			float3 _Color;
+			float _DensityRange;
+			float _size;
+			
+			#define PI 3.141592654
 
 			struct Particle
 			{
-                float pressure;
-                float density;
-                float3 force;
-                float3 velocity;
+				float pressure;
+				float density;
+				float3 force;
+				float3 velocity;
 				float3 position;
 				
 			};
 
-		#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
-			StructuredBuffer<Particle> _particlesBuffer;
-			StructuredBuffer<uint> _cellIndices;
-		#endif
-
-			void setup()
+			struct appdata
 			{
-			#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
-				float3 pos = _particlesBuffer[unity_InstanceID].position;
-				float size = _size;
+				float3 vertex : POSITION;
+				float3 normal : NORMAL;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
 
-				unity_ObjectToWorld._11_21_31_41 = float4(size, 0, 0, 0);
-				unity_ObjectToWorld._12_22_32_42 = float4(0, size, 0, 0);
-				unity_ObjectToWorld._13_23_33_43 = float4(0, 0, size, 0);
-				unity_ObjectToWorld._14_24_34_44 = float4(pos.xyz, 1);
-				unity_WorldToObject = unity_ObjectToWorld;
-				unity_WorldToObject._14_24_34 *= -1;
-				unity_WorldToObject._11_22_33 = 1.0f / unity_WorldToObject._11_22_33;
-			#endif
+			struct v2f
+			{
+				float4 pos : SV_POSITION;
+				float3 worldPos : TEXCOORD0;
+				float3 worldNormal : TEXCOORD1;
+				float velocity : TEXCOORD2;
+				UNITY_VERTEX_INPUT_INSTANCE_ID
+			};
+
+			StructuredBuffer<Particle> _particlesBuffer;
+
+			void setup() {}
+
+			v2f vert(appdata v)
+			{
+				v2f o;
+				
+				UNITY_SETUP_INSTANCE_ID(v);
+				
+				Particle p = _particlesBuffer[unity_InstanceID];
+
+				float3 pos = p.position;
+				float scale = _size;
+				float3 worldPos = pos + v.vertex * scale;
+
+				o.pos = UnityObjectToClipPos(float4(worldPos, 1.0));
+				o.worldPos = worldPos;
+
+				float3 worldNormal = UnityObjectToWorldNormal(v.normal);
+				o.worldNormal = normalize(worldNormal);
+
+				o.velocity = length(p.velocity);
+				
+				UNITY_TRANSFER_INSTANCE_ID(v, o);
+				
+				return o;
 			}
-
-			half _Glossiness;
-			half _Metallic;
-
-			#define PI 3.141592654
-
+			
+			// color helper function
 			float3 palette(in float t, in float3 a, in float3 b, in float3 c, in float3 d)
 			{
 				return a + b * cos(2 * PI * (c * t + d));
 			}
 
-			void surf(Input IN, inout SurfaceOutputStandard o) {
-				float4 col = float4(_Color, 1.0);
-				#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
-					float vel = abs(_particlesBuffer[unity_InstanceID].velocity);
-					float3 a = float3(0.5, 0.5, 0.5);
-					float3 b = float3(0.5, 0.5, 0.5);
-					float3 c = float3(1.0, 1.0, 1.0);
-					float3 d = float3(0.0, 0.33, 0.67);
-					col = float4(palette(vel, a, b, c, d), 1.0);
-				#endif
-				o.Albedo = col.rgb;
+			fixed4 frag(v2f i) : SV_TARGET
+			{
+				float3 a = float3(0.5, 0.5, 0.5);
+				float3 b = float3(0.5, 0.5, 0.5);
+				float3 c = float3(1.0, 1.0, 1.0);
+				float3 d = float3(0.0, 0.33, 0.67);
+
+				float3 colNoLight = palette(i.velocity, a, b, c, d);
+				
+				float3 lightDir = normalize(_WorldSpaceLightPos0.xyz);
+				float dotProduct = max(0, dot(i.worldNormal, lightDir));
+
+				float3 colLight = colNoLight * (dotProduct + 0.2);
+
+				return float4(colLight, 1.0);
 			}
 			ENDCG
 		}
-			FallBack "Diffuse"
+	}	
 }

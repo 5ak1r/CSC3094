@@ -19,7 +19,7 @@ struct ParticleGPU
 };
 
 // general settings
-int particleCount;
+uint particleCount;
 
 float3 boxDimensions;
 
@@ -60,16 +60,11 @@ inline int3 FindCell(in float3 position)
 
 inline uint FindHash(int3 cell)
 {
-    const uint primeX = 73856093;
-    const uint primeY = 19349663;
-    const uint primeZ = 83492791;
-
-    uint hash = cell.x * primeX ^
-                cell.y * primeY ^
-                cell.z * primeZ;
-
-    hash %= particleCount;
-    return hash;
+    return (
+        cell.x * 73856093 ^
+        cell.y * 19349663 ^
+        cell.z * 83492791
+    ) % particleCount;
 }
 
 [numthreads(256,1,1)]
@@ -87,7 +82,7 @@ void BitonicSort(int3 id: SV_DISPATCHTHREADID)
     uint i = id.x + id.y * 256 * 1024;
     uint j = i ^ block;
 
-    if(j <= i || (int)i >= particleCount || (int)j >= particleCount) return;
+    if(j <= i || i >= particleCount || j >= particleCount) return;
 
     uint keyI = _particleIndices[i];
     uint keyJ = _particleIndices[j];
@@ -154,15 +149,13 @@ void CalculateProperties(int3 id: SV_DISPATCHTHREADID)
                 uint neighbourHash = FindHash(neighbour);
                 uint start = _lookupTable[neighbourHash];
 
-                while(start != 0xFFFFFFFF && (int)start < particleCount)
+                while(start != 0xFFFFFFFF && start < particleCount)
                 {
                     uint otherIndex = _particleIndices[start];
                     
                     // if not equal, not in same cell
                     if (_cellIndices[otherIndex] != neighbourHash)
-                    {
                         break;
-                    }
 
                     ParticleGPU other = _particles[otherIndex];
 
@@ -170,9 +163,7 @@ void CalculateProperties(int3 id: SV_DISPATCHTHREADID)
                     float distance2 = dot(offset, offset);
 
                     if (distance2 < smoothingRadius2)
-                    {
                         density += Poly6(distance2) * particleMass;
-                    }
 
                     start++;
                 }
@@ -204,15 +195,13 @@ void CalculateForces(int3 id: SV_DISPATCHTHREADID)
                 uint neighbourHash = FindHash(neighbour);
                 uint start = _lookupTable[neighbourHash];
 
-                while(start != 0xFFFFFFFF && (int)start < particleCount)
+                while(start != 0xFFFFFFFF && start < particleCount)
                 {
                     uint otherIndex = _particleIndices[start];
                     
                     // if not equal, not in same cell
                     if (_cellIndices[otherIndex] != neighbourHash)
-                    {
                         break;
-                    }
 
                     ParticleGPU other = _particles[otherIndex];
 
@@ -244,7 +233,7 @@ void CalculateForces(int3 id: SV_DISPATCHTHREADID)
 [numthreads(256,1,1)]
 void MoveParticles(int3 id: SV_DISPATCHTHREADID)
 {
-    float damping = -0.3;
+    const float damping = -0.3;
 
     float3 vel = _particles[id.x].velocity + deltaTime * _particles[id.x].forces / particleMass; //v = u + at, F = ma
     float3 pos = _particles[id.x].position + vel * deltaTime;
@@ -271,12 +260,15 @@ void MoveParticles(int3 id: SV_DISPATCHTHREADID)
         vel.y *= damping;
     }
 
+    if (vel.y < 0.1) vel.y == 0;
+
     if (pos.z - smoothingRadius < 0)
     {
         pos.z = smoothingRadius;
         vel.z *= damping;
     }
-    else if (pos.z + smoothingRadius > boxDimensions.z) {
+    else if (pos.z + smoothingRadius > boxDimensions.z)
+    {
         pos.z = boxDimensions.z - smoothingRadius;
         vel.z *= damping;
     }

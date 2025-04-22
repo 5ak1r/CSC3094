@@ -385,7 +385,7 @@ MonoBehaviour:
   showSpheres: 1
   rowCount: {x: 32, y: 32, z: 32}
   epsilon: 0.00001
-  deltaTime: 0.005
+  deltaTime: 0.003
   particleRadius: 0.2
   boxDimensions: {x: 4, y: 10, z: 3}
   spawnPoint: {x: 1, y: 1, z: 1}
@@ -395,7 +395,6 @@ MonoBehaviour:
   particleRenderSize: 8
   computeShader: {fileID: 7200000, guid: 4d412b5173089a34d8631082035334e9, type: 3}
   particles: []
-  tempIndices: 
   particleMass: 1
   restDensity: 1
   gasConstant: 2
