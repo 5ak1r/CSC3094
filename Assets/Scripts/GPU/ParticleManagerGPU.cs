@@ -54,7 +54,6 @@ public class ParticleManagerGPU : MonoBehaviour
     [Header("Compute Shader")]
     public ComputeShader computeShader;
     public ParticleGPU[] particles;
-    public uint[] tempIndices;
 
     private ComputeBuffer _argsBuffer;
     private ComputeBuffer _particlesBuffer;
@@ -110,8 +109,6 @@ public class ParticleManagerGPU : MonoBehaviour
         _particleIndicesBuffer.SetData(particleIndices);
 
         SetUpComputeBuffers();
-
-        tempIndices = new uint[ParticleCount];
     }
 
     private void OnDrawGizmos()
@@ -158,9 +155,6 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.Dispatch(CalculatePropertiesKernel, ParticleCount / 256, 1, 1);
         computeShader.Dispatch(CalculateForcesKernel, ParticleCount / 256, 1, 1);
         computeShader.Dispatch(MoveParticlesKernel, ParticleCount / 256, 1, 1);
-
-        //_particlesBuffer.GetData(particles);
-        _particleIndicesBuffer.GetData(tempIndices);
     }
 
     private void OnDestroy()

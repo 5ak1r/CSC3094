@@ -55,17 +55,20 @@ RWStructuredBuffer<uint> _lookupTable;
 
 inline int3 FindCell(in float3 position)
 {
-    return int3(floor(position / smoothingRadius * 2));
+    return int3(floor(position / smoothingRadius));
 }
 
 inline uint FindHash(int3 cell)
 {
-    uint hash = cell.x * 73856093 ^
-                cell.y * 19349663 ^
-                cell.z * 83492791;
+    const uint primeX = 73856093;
+    const uint primeY = 19349663;
+    const uint primeZ = 83492791;
+
+    uint hash = cell.x * primeX ^
+                cell.y * primeY ^
+                cell.z * primeZ;
 
     hash %= particleCount;
-
     return hash;
 }
 
@@ -84,14 +87,15 @@ void BitonicSort(int3 id: SV_DISPATCHTHREADID)
     uint i = id.x + id.y * 256 * 1024;
     uint j = i ^ block;
 
-    if(j < i || (int)i >= particleCount) return;
+    if(j <= i || (int)i >= particleCount || (int)j >= particleCount) return;
 
     uint keyI = _particleIndices[i];
     uint keyJ = _particleIndices[j];
+
     float valueI = _cellIndices[keyI];
     float valueJ = _cellIndices[keyJ];
 
-    float diff = (valueI - valueJ) * ((i % dim) == 0 ? 1 : -1);
+    float diff = (valueI - valueJ) * ((i & dim) == 0 ? 1 : -1);
     
     if (diff > 0)
     {
