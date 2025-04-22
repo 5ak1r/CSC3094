@@ -61,11 +61,22 @@ Shader "Instanced/GridTestParticleShader" {
 			half _Glossiness;
 			half _Metallic;
 
+			#define PI 3.141592654
+
+			float3 palette(in float t, in float3 a, in float3 b, in float3 c, in float3 d)
+			{
+				return a + b * cos(2 * PI * (c * t + d));
+			}
+
 			void surf(Input IN, inout SurfaceOutputStandard o) {
 				float4 col = float4(_Color, 1.0);
 				#ifdef UNITY_PROCEDURAL_INSTANCING_ENABLED
-					float press = (_particlesBuffer[unity_InstanceID].pressure * 0.03)/300;
-					col = float4(press, press, press, 1.0);
+					float vel = abs(_particlesBuffer[unity_InstanceID].velocity);
+					float3 a = float3(0.5, 0.5, 0.5);
+					float3 b = float3(0.5, 0.5, 0.5);
+					float3 c = float3(1.0, 1.0, 1.0);
+					float3 d = float3(0.0, 0.33, 0.67);
+					col = float4(palette(vel, a, b, c, d), 1.0);
 				#endif
 				o.Albedo = col.rgb;
 			}
