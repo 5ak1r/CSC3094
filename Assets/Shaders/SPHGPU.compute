@@ -50,6 +50,11 @@ float viscLapMult; // 45 / (pi*smoothingRadius5)
 int block;
 int dim;
 
+// collision object settings
+float3 collisionPosition;
+float collisionRadius;
+float collisionForce;
+
 // buffers
 RWStructuredBuffer<ParticleGPU> _particles;
 RWStructuredBuffer<uint> _particleIndices;
@@ -123,6 +128,7 @@ inline float Poly6(in float distance2)
     return polyMult * x * x * x;
 }
 
+// https://courses.grainger.illinois.edu/cs418/fa2024/text/sph.html
 inline float3 Poly6Gradient(in float distance2, in float3 direction)
 {
     float x = 1 - distance2 / smoothingRadius2;
@@ -189,7 +195,7 @@ void CalculateProperties(int3 id: SV_DISPATCHTHREADID)
     }
 
     _particles[particleIndex].density = density + epsilon;
-    _particles[particleIndex].pressure = max(0, gasConstant * (_particles[particleIndex].density - restDensity));
+    _particles[particleIndex].pressure = max(0, gasConstant * (_particles[particleIndex].density - restDensity)); // clamp pressure for simulation purposes
 }
 
 [numthreads(256,1,1)]
@@ -243,6 +249,7 @@ void CalculateForces(int3 id: SV_DISPATCHTHREADID)
                         pressureForce -= particleMass * (_particles[particleIndex].pressure + other.pressure) / (2 * other.density) * SpikyGradient(distance, dir);
                         viscosityForce += particleMass * (other.velocity - _particles[particleIndex].velocity) / other.density * ViscosityLaplacian(distance);
                         
+                        // color field for surface tension calculations
                         colorFieldGrad += particleMass / other.density * Poly6Gradient(distance2, dir);
                         colorFieldLap += particleMass / other.density * Poly6Laplacian(distance2);
                     }
@@ -263,6 +270,19 @@ void CalculateForces(int3 id: SV_DISPATCHTHREADID)
     }
 
     _particles[particleIndex].forces = gravityForce + pressureForce + viscosityForce + surfaceTensionForce;
+
+    // collision external force
+    float3 collisionDir = _particles[particleIndex].position - collisionPosition;
+    float distance2 = dot(collisionDir, collisionDir);
+
+    if (distance2 < collisionRadius * collisionRadius + smoothingRadius)
+    {
+        // only square root if needed; expensive operation
+        float distance = sqrt(distance2);
+        float3 normalizeDir = collisionDir / distance;
+        float falloff = 1 - (distance / collisionRadius);
+        _particles[particleIndex].forces += normalizeDir * collisionForce * falloff;
+    }
 }
 
 [numthreads(256,1,1)]
@@ -273,6 +293,7 @@ void MoveParticles(int3 id: SV_DISPATCHTHREADID)
     float3 vel = _particles[id.x].velocity + deltaTime * _particles[id.x].forces / particleMass; //v = u + at, F = ma
     float3 pos = _particles[id.x].position + vel * deltaTime;
 
+    // box collision resolutions
     if (pos.x - smoothingRadius < 0) 
     {
         pos.x = smoothingRadius;

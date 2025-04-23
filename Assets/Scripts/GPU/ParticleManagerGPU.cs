@@ -24,6 +24,8 @@ public class ParticleManagerGPU : MonoBehaviour
 {
     [Header("General")]
     public bool showSpheres = true;
+    public Transform collisionObj;
+    public float collisionForce;
     
     // must be a multiple of 256 for bitonic sort
     public Vector3Int rowCount = new(16, 16, 16);
@@ -85,6 +87,7 @@ public class ParticleManagerGPU : MonoBehaviour
 
         SpawnParticles();
 
+        // setup buffers
         uint[] args =
         {
             particleMesh.GetIndexCount(0),
@@ -141,6 +144,7 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private void FixedUpdate()
     {
+        // update compute shader values when changed in the editor
         computeShader.SetVector("boxDimensions", boxDimensions);
         computeShader.SetFloat("deltaTime", deltaTime);
         computeShader.SetFloat("particleMass", particleMass);
@@ -149,6 +153,11 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetFloat("viscosity", viscosity);
         computeShader.SetFloat("surfaceTensionThreshold", surfaceTensionThreshold);
         computeShader.SetFloat("tensionCoefficient", tensionCoefficient);
+
+        //update collision object values when moved in the editor
+        computeShader.SetVector("collisionPosition", collisionObj.transform.position);
+        computeShader.SetFloat("collisionRadius", collisionObj.transform.localScale.x * 0.5f);
+        computeShader.SetFloat("collisionForce", collisionForce);
 
         computeShader.Dispatch(HashParticlesKernel, ParticleCount / 256, 1, 1);
         SortParticles();
@@ -172,6 +181,7 @@ public class ParticleManagerGPU : MonoBehaviour
     {
         List<ParticleGPU> _particles = new();
 
+        // spawn particles in a grid - removed triple for loop but might actually worsen performance due to additional calculations
         for (int i = 0; i < rowCount.x * rowCount.y * rowCount.z; i++)
         {
             int x = i / (rowCount.x * rowCount.y);
@@ -194,14 +204,17 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private void SetUpComputeBuffers()
     {
-        CalculatePropertiesKernel = computeShader.FindKernel("CalculateProperties");
-        CalculateForcesKernel = computeShader.FindKernel("CalculateForces");
-        MoveParticlesKernel = computeShader.FindKernel("MoveParticles");
-
+        // find spatial hash kernels
         HashParticlesKernel = computeShader.FindKernel("HashParticles");
         BitonicSortKernel = computeShader.FindKernel("BitonicSort");
         FillLookupTableKernel = computeShader.FindKernel("FillLookupTable");
 
+        // find simulation kernels
+        CalculatePropertiesKernel = computeShader.FindKernel("CalculateProperties");
+        CalculateForcesKernel = computeShader.FindKernel("CalculateForces");
+        MoveParticlesKernel = computeShader.FindKernel("MoveParticles");
+
+        // set initial setting values
         computeShader.SetInt("particleCount", ParticleCount);
         computeShader.SetVector("boxDimensions", boxDimensions);
 
@@ -219,6 +232,7 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetFloat("smoothingRadius2", particleRadius * particleRadius);
         computeShader.SetFloat("smoothingRadius4", particleRadius * particleRadius * particleRadius * particleRadius);
 
+        // calculate kernel constants once, improved optimisation
         float radius3 = particleRadius * particleRadius * particleRadius;
         float radius5 = radius3 * particleRadius * particleRadius;
 
@@ -234,6 +248,11 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetFloat("spikyGradMult", spikyGradMult);
         computeShader.SetFloat("viscLapMult", viscLapMult);
 
+        computeShader.SetVector("collisionPosition", collisionObj.transform.position);
+        computeShader.SetFloat("collisionRadius", collisionObj.transform.localScale.x * 0.5f);
+        computeShader.SetFloat("collisionForce", collisionForce);
+
+        // setup initial buffer values
         computeShader.SetBuffer(HashParticlesKernel, "_particles", _particlesBuffer);
         computeShader.SetBuffer(BitonicSortKernel, "_particles", _particlesBuffer);
         computeShader.SetBuffer(CalculatePropertiesKernel, "_particles", _particlesBuffer);
@@ -259,6 +278,7 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetBuffer(FillLookupTableKernel, "_lookupTable", _lookupTableBuffer);
     }
 
+    // parallelise bitonic sort
     private void SortParticles()
     {
         for (var dim = 2; dim <= ParticleCount; dim <<= 1) 
