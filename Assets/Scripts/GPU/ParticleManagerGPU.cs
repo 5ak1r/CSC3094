@@ -73,11 +73,12 @@ public class ParticleManagerGPU : MonoBehaviour
     public float restDensity = 1.0f;
     public float gasConstant = 1.0f;
     public float viscosity = 1.0f;
+    public float surfaceTensionThreshold = 10.0f;
+    public float tensionCoefficient = 1.0f;
 
     [Header("Properties")]
     private static readonly int SizeProperty = Shader.PropertyToID("_size");
     private static readonly int ParticlesBufferProperty = Shader.PropertyToID("_particlesBuffer");
-
     private void Awake()
     {
         if (!GetComponent<CORG>().gpu) return;
@@ -146,6 +147,8 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetFloat("restDensity", restDensity);
         computeShader.SetFloat("gasConstant", gasConstant);
         computeShader.SetFloat("viscosity", viscosity);
+        computeShader.SetFloat("surfaceTensionThreshold", surfaceTensionThreshold);
+        computeShader.SetFloat("tensionCoefficient", tensionCoefficient);
 
         computeShader.Dispatch(HashParticlesKernel, ParticleCount / 256, 1, 1);
         SortParticles();
@@ -209,16 +212,25 @@ public class ParticleManagerGPU : MonoBehaviour
         computeShader.SetFloat("restDensity", restDensity);
         computeShader.SetFloat("gasConstant", gasConstant);
         computeShader.SetFloat("viscosity", viscosity);
+        computeShader.SetFloat("surfaceTensionThreshold", surfaceTensionThreshold);
+        computeShader.SetFloat("tensionCoefficient", tensionCoefficient);
 
         computeShader.SetFloat("smoothingRadius", particleRadius);
         computeShader.SetFloat("smoothingRadius2", particleRadius * particleRadius);
+        computeShader.SetFloat("smoothingRadius4", particleRadius * particleRadius * particleRadius * particleRadius);
 
         float radius3 = particleRadius * particleRadius * particleRadius;
+        float radius5 = radius3 * particleRadius * particleRadius;
+
         float polyMult = 315 / (64 * Mathf.PI * radius3);
+        float polyGradMult = -945 / (32 * Mathf.PI * radius5);
+        float polyLapMult = -945 / (32 * Mathf.PI * radius5 * radius3 * particleRadius);
         float spikyGradMult = -45 / (Mathf.PI * radius3);
-        float viscLapMult = 45 / (Mathf.PI * radius3 * particleRadius * particleRadius);
+        float viscLapMult = 45 / (Mathf.PI * radius5);
 
         computeShader.SetFloat("polyMult", polyMult);
+        computeShader.SetFloat("polyGradMult", polyGradMult);
+        computeShader.SetFloat("polyLapMult", polyLapMult);
         computeShader.SetFloat("spikyGradMult", spikyGradMult);
         computeShader.SetFloat("viscLapMult", viscLapMult);
 

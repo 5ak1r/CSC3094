@@ -44,6 +44,7 @@ Shader "Instanced/GridTestParticleShader"
 
 			struct appdata
 			{
+				float2 texcoord : TEXCOORD0;
 				float3 vertex : POSITION;
 				float3 normal : NORMAL;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
@@ -52,9 +53,10 @@ Shader "Instanced/GridTestParticleShader"
 			struct v2f
 			{
 				float4 pos : SV_POSITION;
-				float3 worldPos : TEXCOORD0;
-				float3 worldNormal : TEXCOORD1;
-				float velocity : TEXCOORD2;
+				float2 uv : TEXCOORD0;
+				float3 worldPos : TEXCOORD1;
+				float3 worldNormal : TEXCOORD2;
+				float velocity : TEXCOORD3;
 				UNITY_VERTEX_INPUT_INSTANCE_ID
 			};
 
@@ -67,10 +69,11 @@ Shader "Instanced/GridTestParticleShader"
 				v2f o;
 				
 				UNITY_SETUP_INSTANCE_ID(v);
-				
+			
 				Particle p = _particlesBuffer[unity_InstanceID];
-
-				float3 pos = p.position;
+				
+				// use this for spheres
+				/*float3 pos = p.position;
 				float scale = _size;
 				float3 worldPos = pos + v.vertex * scale;
 
@@ -84,8 +87,34 @@ Shader "Instanced/GridTestParticleShader"
 				
 				UNITY_TRANSFER_INSTANCE_ID(v, o);
 				
+				return o;*/
+				
+				// use this for circles
+				// https://www.youtube.com/watch?v=kOkfC5fLfgE
+				o.uv = v.texcoord;
+
+				float3 worldCentre = p.position;
+				float2 vertOffset = v.vertex.xy * _size * 2;
+				
+				float3 camUp = unity_CameraToWorld._m01_m11_m21;
+				float3 camRight = unity_CameraToWorld._m00_m10_m20;
+
+				float3 vertPosWorld = worldCentre + camRight * vertOffset.x + camUp * vertOffset.y;
+
+				o.pos = mul(UNITY_MATRIX_VP, float4(vertPosWorld, 1));
+				o.worldPos = vertPosWorld;
+
+				float3 worldNormal = UnityObjectToWorldNormal(v.normal);
+				o.worldNormal = normalize(worldNormal);
+				o.velocity = length(p.velocity);
+
 				return o;
 			}
+
+			/*float3 greyScaleA = float3(0.50, 0.50, 0.50);
+			float3 greyScaleB = float3(0.50, 0.50, 0.50);
+			float3 greyScaleC = float3(0.50, 0.50, 0.50);
+			float3 greyScaleD = float3(0.50, 0.50, 0.50);*/
 			
 			// color helper function
 			float3 palette(in float t, in float3 a, in float3 b, in float3 c, in float3 d)
@@ -95,10 +124,21 @@ Shader "Instanced/GridTestParticleShader"
 
 			fixed4 frag(v2f i) : SV_TARGET
 			{
-				float3 a = float3(0.5, 0.5, 0.5);
-				float3 b = float3(0.5, 0.5, 0.5);
-				float3 c = float3(1.0, 1.0, 1.0);
-				float3 d = float3(0.0, 0.33, 0.67);
+
+				// use for spheres
+				//float alpha = 1.0;
+
+				// use for circles
+				float2 centreOffset = (i.uv - 0.5) * 2;
+				float sqrDst = dot(centreOffset, centreOffset);
+				if (sqrDst > 1) discard;
+
+				float alpha = smoothstep(1, 0.7, sqrDst);
+				
+				float3 a  = float3(0.50, 0.50, 0.50);
+				float3 b  = float3(0.50, 0.50, 0.50);
+				float3 c  = float3(1.00, 1.00, 1.00);
+				float3 d  = float3(0.00, 0.33, 0.67);
 
 				float3 colNoLight = palette(i.velocity, a, b, c, d);
 				
@@ -106,8 +146,8 @@ Shader "Instanced/GridTestParticleShader"
 				float dotProduct = max(0, dot(i.worldNormal, lightDir));
 
 				float3 colLight = colNoLight * (dotProduct + 0.2);
-
-				return float4(colLight, 1.0);
+				
+				return float4(colLight, alpha);
 			}
 			ENDCG
 		}

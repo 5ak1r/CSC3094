@@ -31,13 +31,18 @@ float particleMass;
 float restDensity;
 float gasConstant;
 float viscosity;
+float surfaceTensionThreshold;
+float tensionCoefficient;
 
 // particle settings
 float smoothingRadius;
 float smoothingRadius2;
+float smoothingRadius4;
 
 // kernel settings
 float polyMult; // 315 / (64*pi*smoothingRadius3)
+float polyGradMult; // -945 / (32*pi*smoothingRadius5)
+float polyLapMult; // -945 / (32*pi*smoothingRadius9)
 float spikyGradMult; // -45 / (pi*smoothingRadius3)
 float viscLapMult; // 45 / (pi*smoothingRadius5)
 
@@ -118,6 +123,18 @@ inline float Poly6(in float distance2)
     return polyMult * x * x * x;
 }
 
+inline float3 Poly6Gradient(in float distance2, in float3 direction)
+{
+    float x = 1 - distance2 / smoothingRadius2;
+    return polyGradMult * x * x * direction;
+}
+
+inline float Poly6Laplacian(in float distance2)
+{
+    float x = 3 * smoothingRadius4 - 10 * smoothingRadius2 * distance2 + 7 * distance2 * distance2;
+    return polyLapMult * x;
+}
+
 inline float3 SpikyGradient(in float distance, in float3 direction)
 {
     float x = 1 - distance / smoothingRadius;
@@ -182,6 +199,11 @@ void CalculateForces(int3 id: SV_DISPATCHTHREADID)
     float3 pressureForce = float3(0,0,0);
     float3 viscosityForce = float3(0,0,0);
 
+    float3 surfaceTensionForce = float3(0,0,0);
+    
+    float3 colorFieldGrad = float3(0,0,0);
+    float colorFieldLap = 0;
+
     uint particleIndex = _particleIndices[id.x];
     int3 cellIndex = FindCell(_particles[particleIndex].position);
 
@@ -217,8 +239,12 @@ void CalculateForces(int3 id: SV_DISPATCHTHREADID)
                     if (distance2 < smoothingRadius2)
                     {   
                         float distance = sqrt(distance2);
-                        pressureForce -= particleMass * (_particles[particleIndex].pressure + other.pressure) / (2 * other.density) * SpikyGradient(distance, normalize(offset));
+                        float3 dir = normalize(offset);
+                        pressureForce -= particleMass * (_particles[particleIndex].pressure + other.pressure) / (2 * other.density) * SpikyGradient(distance, dir);
                         viscosityForce += particleMass * (other.velocity - _particles[particleIndex].velocity) / other.density * ViscosityLaplacian(distance);
+                        
+                        colorFieldGrad += particleMass / other.density * Poly6Gradient(distance2, dir);
+                        colorFieldLap += particleMass / other.density * Poly6Laplacian(distance2);
                     }
 
                     start++;
@@ -227,7 +253,16 @@ void CalculateForces(int3 id: SV_DISPATCHTHREADID)
         }
     }
 
-    _particles[particleIndex].forces = gravityForce + pressureForce + viscosityForce;
+    //check if surface tension applies here
+    float colorFieldGradLength = length(colorFieldGrad);
+
+    if (colorFieldGradLength > surfaceTensionThreshold)
+    {
+        float curvature = -colorFieldLap / colorFieldGradLength;
+        surfaceTensionForce = -tensionCoefficient * curvature * normalize(colorFieldGrad);
+    }
+
+    _particles[particleIndex].forces = gravityForce + pressureForce + viscosityForce + surfaceTensionForce;
 }
 
 [numthreads(256,1,1)]
