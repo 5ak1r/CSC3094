@@ -76,7 +76,10 @@ crashlytics-build.properties
 # VSCode Settings
 .vscode/
 
-## https://github.com/github/gitignore/blob/main/TeX.gitignore
+# Specification folder
+/[Dd]issertation/[Ss]pecification/
+
+# https://github.com/github/gitignore/blob/main/TeX.gitignore
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
