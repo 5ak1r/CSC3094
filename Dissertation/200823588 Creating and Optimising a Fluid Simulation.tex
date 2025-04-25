@@ -1,9 +1,28 @@
 \documentclass{article}
-\usepackage{amsmath}
-\usepackage{graphics}
 
-\title{Creating and Optimising a Fluid Simulation}
-\author{Sakir Azimkar}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage[numbers]{natbib}
+
+\graphicspath{{assets/}}
+\bibliographystyle{IEEEtranN}
+
+\title
+{
+    {Creating and Optimising a Fluid Simulation using Smoothed Particle Hydrodynamics}
+    {\large Newcastle University} \\
+    {\large BSc Computer Science}
+}
+
+\author
+{
+    Sakir Azimkar \\
+    200823588 \\
+    Supervised by: Richard Davison
+}
+
+\date{}
+
 
 \begin{document}
     \pagenumbering{gobble}
@@ -13,25 +32,44 @@
     \tableofcontents
     \newpage
     \listoffigures
-    \listoftables
     \newpage
 
-    \section{First Section}
-        Hello World!
-        \subsection{First Subsection}
-            \paragraph{Paragraph}
-                Lol!
-                \subparagraph{SubParagraph}
-                    Haha!
+    \section{Abstract}
+    This dissertation explores the Navier-Stokes equations, which are used to describe the motion of fluids. It briefly looks at an Eulerian implementation introduced by Jos Stam \cite{stam}, before shifting focus on to Lagrangian methods - specifically Smoothed Particle Hydrodynamics (SPH). Furthermore,this paper describes an implementation of this technique. \\ The main goal of this project is to produce a real-time fluid simulation that can be integrated into a video game, with minimal performance loss. It is an optimisation problem, motivated by an interest in the GPU and shader languages.
+    
+    \newpage
 
-    \section{Second Section}
-        \begin{equation}
-            f(x) = x^2
-        \end{equation}
+    \section{Declaration} "I declare that this dissertation represents my own work, unless explicitly stated otherwise."
 
-        \begin{align*}
-            1 &= 3 - 2 \\
-            1 + 2 &= 3
-        \end{align*}
+    \newpage
+
+    \section{Acknowledgements}
+    I would like to express my deepest gratitude to my supervisor, Richard Davison, for being reliable and helpful throughout the entire project. I'd also like to thank Gary Ushaw, my "second" supervisor, who was always present at our meetings and available .
+    
+    \section{Introduction}
+    
+    \subsection{Motivation}
+    \subsection{Aims/Hypothesis}
+    \subsection{Objectives}
+    \subsection{Changes}
+    \subsection{Dissertation Structure}
+
+    \section{Background Review}
+
+    \section{What Was Done and How}
+
+    \section{Results and Evaluation}
+    \subsection{Results}
+    \subsection{Evaluation}
+
+    \section{Conclusion}
+    \subsection{Aims and Objectives}
+    \subsection{What Was Learned}
+    \subsection{Future Work}
+
+    \section{References}
+    \bibliography{references}
+
+    \section{Appendices}
 
 \end{document}
