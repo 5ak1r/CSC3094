@@ -111,6 +111,7 @@
         \item \textbf{Background Review} \\
         A breakdown of research performed before and during the project.
         \begin{itemize}
+            \item Existing fluid simulations and their pros and cons
             \item Software Tools
             \item Mathematics and Physics
             \item Shader Language
@@ -148,7 +149,7 @@
     There are four main components of this project:
     \begin{itemize}
         \item Exploring existing fluid simulations
-        \item Which software to use
+        \item Software Tools
         \item How fluid simulations work
         \item How to optimise this project
     \end{itemize}
@@ -237,6 +238,15 @@
         \caption{Helicopter physics in Far Cry 6 \cite{farcry6video}}
     \end{figure}
 
+    A modern game that does an excellent job at fluid simulation is \textit{Far Cry 6}. As shown in Figure 9, the wind produced by the helicopter's turbines visibly pushes the water away from the vehicle. Furthermore, the player is able to swim and dive into the fluid, as well as observe external forces acting upon it when objects, such as explosives, are thrown into the water. This would be an ideal fluid simulation approach for many games seeking realistic water interactions. However there are a few issues with this. Since \textit{Far Cry 6} is a proprietary, AAA game, its source code is not visible to the public, as thus the simulation is not accessible by anyone else.
+    
+    Since the release of this game, the former water lead tech, Zhenyu Mao, has moved on to other projects with \textit{Lightspeed Studios}, and has developed a new water rendering solution for games. In an interview\cite{zhenyu}, Mao mentions ``Thanks to Dr. Wu's expertise, we have developed a proprietary solution that generates natural water flow that interacts harmoniously with the environment. Our water simulation can generate accurate flow around objects, creating realistic turbulence and generating foam in the appropriate places." This sounds incredibly promising, but is currently still a proprietary, in-house solutiona available to \textit{Lightspeed Studios} only. There is a presentation available online about the physics behind this solution\cite{zhenyupresent}, but that is not in the scope of this dissertation.
+
+    \subsubsection{Conclusion}
+
+    While there are a lot of fluid simulations available online, few are practical for use within 3D video games; they are often computationally taxing and thus would not be a feasible asset to utilise without significant prior optimisation and modifications. The options that do satisfy these conditions are usually proprietary and restricted to the studio it was developed in - or come at a premium cost inaccessible to some developers. Therefore, the motivation for this dissertation is to develop a freely accessible, efficient 3D fluid simulation that can be integrated into modern video games without significant performance trade-offs.
+
+    \subsection{Software Tools}
 
     \section{What Was Done and How}
 
