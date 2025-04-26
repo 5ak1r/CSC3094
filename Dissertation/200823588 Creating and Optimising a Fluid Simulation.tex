@@ -5,6 +5,7 @@
 \usepackage[numbers]{natbib}
 \usepackage{titling}
 \usepackage{float}
+\usepackage[hidelinks]{hyperref}
 
 \graphicspath{{assets/}}
 \bibliographystyle{IEEEtranN}
@@ -111,15 +112,13 @@
         \item \textbf{Background Review} \\
         A breakdown of research performed before and during the project.
         \begin{itemize}
-            \item Existing fluid simulations and their pros and cons
+            \item Existing fluid simulations
             \item Software Tools
-            \item Mathematics and Physics
-            \item Shader Language
-            \item Optimisation Tools
         \end{itemize}
         \item \textbf{What was Done and How} \\
         An explanation of how the simulation was implemented, including the methods learned and processes involved.
         \begin{itemize}
+            \item Mathematics and Physics
             \item OpenGL
             \item Unity
             \item Compute Shaders
@@ -247,6 +246,17 @@
     While there are a lot of fluid simulations available online, few are practical for use within 3D video games; they are often computationally taxing and thus would not be a feasible asset to utilise without significant prior optimisation and modifications. The options that do satisfy these conditions are usually proprietary and restricted to the studio it was developed in - or come at a premium cost inaccessible to some developers. Therefore, the motivation for this dissertation is to develop a freely accessible, efficient 3D fluid simulation that can be integrated into modern video games without significant performance trade-offs.
 
     \subsection{Software Tools}
+
+    Choosing the correct set of tools is essential for an optimisation problem. They must be lightweight in nature and avoid unnecessary overhead in order to achieve the best performance possible.
+
+    \subsubsection{Graphics API vs. Existing Game Engine}
+
+    \begin{figure}[H]
+        \noindent\wideimage[]{unityInterface.png}
+        \caption{Empty Unity\cite{unity} scene}
+    \end{figure}
+
+    Game engines have the advantage of simplicity, leading to a faster development cycle. There are a lot of available pre-built tools, editors and assets that allow rapid prototyping and game development. For this dissertation, most of these tools are not as necessary; the physics engine for example would not be utilised in this project since all the physics will be manually written. They also abstract away from the low-level graphics rendering pipeline and handle it automatically.
 
     \section{What Was Done and How}
 
