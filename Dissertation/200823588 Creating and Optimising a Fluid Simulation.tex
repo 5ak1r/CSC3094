@@ -280,17 +280,17 @@
 
     Equation 1 is a non-linear partial differential equation that describes fluid motion\cite{slides}. The first term, $\frac{\partial{\textbf{u}}}{\partial{t}}$, represents the change in velocity over time at a fixed point, where $\textbf{u}$ is the velocity field of the fluid. $-(\textbf{u}\cdot\nabla)\textbf{u}$ is called the advection term. Advection is described as ``the transport of a substance or of heat by the flow of a liquid"\cite{cambridge}. In fluid dynamics, this may also refer to the transport of a property due to fluid flow. $\nabla$ is a vector of partial derivatives: $\nabla = (\frac{\partial}{\partial x}, \frac{\partial}{\partial y}, \frac{\partial}{\partial z})$. Taking the dot product of \textbf{u}, a vector, and this operator, $\textbf{u}\cdot\nabla$, gives us a directional derivative - it describes the direction that a property is changing.
 
-    \begin{equation}
+    \begin{equation*}
         (\textbf{u}\cdot\nabla)\textbf{u} \equiv u_x \frac{\partial \textbf{u}}{\partial x} + u_y \frac{\partial \textbf{u}}{\partial y} + u_z \frac{\partial \textbf{u}}{\partial z}
-    \end{equation}
+    \end{equation*}
 
     This term thus describes the advection of velocity, which is also referred to as convective acceleration, ``the effect of acceleration of a flow with respect to space''\cite{nswikipedia}.
 
     There are three more terms on the right hand side of the equation: the diffusion/viscosity term, pressure and external forces. Sometimes written as $\nabla \cdot (v\nabla\textbf{u})$, the viscosity term describes how the fluid motion is damped due to its viscosity. Fluids with a higher viscosity constant $v$ tend to have stronger resistance, resulting in stronger smoothing and slower flows. $\nabla^2$ is also known as the Laplacian operator. The Laplacian is obtained by summing the second partial derivative with respect to each variable component-wise:
 
-    \begin{equation}
-        \nabla^2\textbf{u} = (\frac{\partial^2{u_x}}{\partial{x^2}} + \frac{\partial^2{u_x}}{\partial{y^2}} + \frac{\partial^2{u_x}}{\partial{z^2}}, \frac{\partial^2{u_y}}{\partial{x^2}} + \frac{\partial^2{u_y}}{\partial{y^2}} + \frac{\partial^2{u_y}}{\partial{z^2}}, \frac{\partial^2{u_z}}{\partial{x^2}} + \frac{\partial^2{u_z}}{\partial{y^2}} + \frac{\partial^2{u_z}}{\partial{z^2}})
-    \end{equation}
+    \begin{equation*}
+        \nabla^2\textbf{u} \equiv (\frac{\partial^2{u_x}}{\partial{x^2}} + \frac{\partial^2{u_x}}{\partial{y^2}} + \frac{\partial^2{u_x}}{\partial{z^2}}, \frac{\partial^2{u_y}}{\partial{x^2}} + \frac{\partial^2{u_y}}{\partial{y^2}} + \frac{\partial^2{u_y}}{\partial{z^2}}, \frac{\partial^2{u_z}}{\partial{x^2}} + \frac{\partial^2{u_z}}{\partial{y^2}} + \frac{\partial^2{u_z}}{\partial{z^2}})
+    \end{equation*}
 
     Multiplying this value by a viscosity constant determines how much the velocity is smoothed or evened-out by viscous forces. If the Laplacian is positive, it means that the velocity is lower at that point than its neighbours, so a larger positive force is applied; a negative Laplacian applies force in the opposite direction.
 
@@ -308,7 +308,7 @@
         \frac{\partial{\rho}}{\partial{t}} = -(\textbf{u}\cdot\nabla)\rho + \kappa\nabla^2 \rho + S
     \end{equation}
 
-    Equation 4 has very similar structure to Equation 1, however this one is used in the calculation of a scalar quantity, density. As a result, there is no pressure force term, and external forces is replaced by an external source term S, which adds or removes density from the system. The viscosity constant is also replaced with $\kappa$, the diffusion constant. This measures how fast the property (in this case density) diffuses through the fluid.
+    Equation 2 has very similar structure to Equation 1, however this one is used in the calculation of a scalar quantity, density. As a result, there is no pressure force term, and external forces is replaced by an external source term S, which adds or removes density from the system. The viscosity constant is also replaced with $\kappa$, the diffusion constant. This measures how fast the property (in this case density) diffuses through the fluid.
 
     \subsubsection{Eulerian Implementations}
 
@@ -321,10 +321,39 @@
         \caption{Computational grid with densities and velocities defined in their centres \cite{stam}}   
     \end{figure}
 
-    Figure 11 is a visualisation of this method by Jos Stam. There is an extra layer of cells around the grid to account for boundary conditions.
+    Figure 11 is a computation grid of cells by Jos Stam. There is an extra layer of cells around the grid to account for boundary conditions. This method utilises Equation 2 to produce a density diffusion solver, where each cell either adds or removes density from its neighbours. Due to distance of other cells, there is no need to include any others in this calculation, as their impact will be negligible and slow the simulation down quite considerably.
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics{neighbourDiff.png}
+        \end{center}
+        \caption{Density exchange through diffusion between neighbours \cite{stam}}   
+    \end{figure}
+
+    After this diffusion has occured, the centres of the grids are considered as particles and are traced through the velocity field, calculated with Equation 1. In order to convert the ``particles" back into grid cells, there are two grids used: a grid of cells containing the old density values and a second grid containing the new density values. The new positions are traced backwards through the velocity field to find the original grid cell, and assign this value to the new position.
+
+    There are a lot of different ways to achieve fluid flow with Eulerian implementations and this is a very oversimplified description, but the main premise of this method is to utilise grids and the two equations mentioned.
+
+    \begin{figure}[H]
+        \begin{center}
+            \noindent\wideimage[width=0.7\textwidth]{eulerianEG.png}
+        \end{center}
+        \caption{Eulerian simulation \cite{eulerianeg}}
+    \end{figure}
 
     \subsubsection{Lagrangian Implementations}
 
+    Langrangian implementations of fluid flow involve treating the fluid as small parcels or particles of fluid. These particles influence their neighbours but are not confined to grid cells. As a result, more calculations are required in determining which particles are within influenceable range. A classic example of a Lagrangian method is Smoothed Particle Hydrodynamics (SPH).
+
+    SPH was initially developed by Gingold, Monaghan and Lucy in 1977 for the pusposes of astrophysics\cite{sca}. Since the particles are independent nodes, this method is meshfree, which improves its implementation and parallelisation. Considering the expensive computations required, parallelisation is fundamental in improving performance for the simulation. Furthermore, conservation of mass is guaranteed; the particles represent mass and the particles do not disappear at any stage.
+
+    Furthermore, this method simplifies the Navier-Stokes equations the following generalised SPH equation:
+
+    \begin{equation}
+        A_S(\textbf{r}) = \sum_{j}{m_j \frac{A_j}{\rho_j}W(\textbf{r} - \textbf{r}_j, h)}
+    \end{equation}
+
+    For each particle with location $\textbf{r}$, we iterate through every other particle $j$ with mass $m_j$, density $\rho_j$, position $\textbf{r}_j$ and property $A_j$ to calculate that particle's total property quantity. $W$ is a smoothing kernel that is defined differently for each property. After a large enough distance $\lvert\textbf{r} - \textbf{r}_j\rvert$, also referred to as the smoothing radius, the value of the smoothing kernel becomes 0; the particle is too far away to provide any significant influence. As a result, this calculation only needs to be performed on particles that are close enough, a key optimisation step for this method.
 
     \section{What Was Done and How}
 
