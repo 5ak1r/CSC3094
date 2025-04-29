@@ -7,6 +7,29 @@
 \usepackage{float}
 \usepackage[hidelinks]{hyperref}
 \usepackage{amsthm}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstdefinelanguage{glsl}{
+    keywords = {if, else, continue, break, for, mat4, vec4, vec3, vec2, return, true, false, bool, int, float, void, char, sampler2D, struct, discard, in, out, layout, version, uniform},
+    keywordstyle = \color{red}\bfseries,
+    ndkeywords = {gl_Position, gl_FragColor},
+    ndkeywordstyle = \color{blue}\bfseries,
+    identifierstyle = \color{black},
+    sensitive = true,
+    comment = [l]{//},
+    morecomment = [s]{/*}{*/},
+    commentstyle = \color{grey}\ttfamily,
+    stringstyle = \color{green}\ttfamily,
+    morestring = [b]",
+    morestring = [b]'
+}
+
+\lstset{
+    breaklines=true,
+    basicstyle=\ttfamily\small,
+    frame=single
+}
 
 \graphicspath{{assets/}}
 \bibliographystyle{IEEEtranN}
@@ -40,7 +63,10 @@
 \date{April 2025}
 
 \begin{document}
+
     \maketitle
+    \thispagestyle{empty}
+
     \newpage
     \pagenumbering{arabic}
 
@@ -63,6 +89,7 @@
     \newpage
 
     \section{Introduction}
+    \label{sec:introduction}
     This section highlights the motivations, aims and objectives of this project. It talks about the overall dissertation structure and compares the differences between this project and the initial proposal.
     
     \subsection{Motivation}
@@ -101,7 +128,7 @@
     \subsubsection{Dissertation Outline}
 
     \begin{itemize}
-        \item \textbf{Introduction} \\
+        \item \hyperref[sec:introduction]{\textbf{Introduction}} \\
         An introduction to the dissertation, outlining the motivation, aim, objectives and overall project structure. 
         \begin{itemize}
             \item Motivation
@@ -110,13 +137,13 @@
             \item Changes
             \item Structure
         \end{itemize}
-        \item \textbf{Background Review} \\
+        \item \hyperref[sec:backgroundreview]{\textbf{Background Review}} \\
         A breakdown of research performed before and during the project.
         \begin{itemize}
             \item Existing fluid simulations
             \item Software Tools
         \end{itemize}
-        \item \textbf{What was Done and How} \\
+        \item \hyperref[sec:whatwasdoneandhow]{\textbf{What was Done and How}} \\
         An explanation of how the simulation was implemented, including the methods learned and processes involved.
         \begin{itemize}
             \item Mathematics and Physics
@@ -126,13 +153,13 @@
             \item GPU Instancing
             \item Optimisations
         \end{itemize}
-        \item \textbf{Results and Evaluation} \\
+        \item \hyperref[sec:resultsandevaluation]{\textbf{Results and Evaluation}} \\
         A complete analysis of frame rate improvements over the course of the project and results obtained.
         \begin{itemize}
             \item Frame Rate
             \item Testing
         \end{itemize}
-        \item \textbf{Conclusion} \\
+        \item \hyperref[sec:conclusion]{\textbf{Conclusion}} \\
         A conclusion that describes fulfilment of objectives, what was learned and future work.
         \begin{itemize}
             \item Aims and Objectives
@@ -143,6 +170,7 @@
     \end{itemize}
 
     \section{Background Review}
+    \label{sec:backgroundreview}
     This section shows the research made on this dissertation. It talks about relevant background resources that were used for different parts of the development process.
     
     \subsection{Strategy}
@@ -169,7 +197,7 @@
         \caption{\textit{WebGL} Fluid Simulation by PavelDoGreat on GitHub \cite{webgl1}}
     \end{figure}
 
-    This simulation showcases a gaseous fluid made up of different, randomly-generated colours. They appear to mostly be for aesthetic purposes. The screen begins completely black and requires the user to input an external force by left-clicking and moving the cursor across the screen. There is a control panel on the top right corner, which allows the user to change various settings, such as density diffusion and vorticity. This is a great visual aid for educational purposes as it allows the user to see the visual impacts that these variables have on the fluid in real time. As an educational tool, this is an excellent visual aid; the immediate feedback and colorful representation make it easy to understand complex fluid dynamics concepts. In the context of video games, however, the colours are a bit unnecessary. This can be easily rectified if someone were to use it in their game, but they would need to make a number of modifications to the existing code to make it independent of user input (for the more common uses of fluids in games).
+    This simulation showcases a gaseous fluid made up of different, randomly-generated colours. They appear to mostly be for aesthetic purposes. The screen begins completely black and requires the user to input an external force by left-clicking and moving the cursor across the screen. There is a control panel on the top right corner, which allows the user to change various settings, such as density diffusion and vorticity. This is a great visual aid for educational purposes as it allows the user to see the visual impacts that these variables have on the fluid in real time. As an educational tool, this is an excellent visual aid; the immediate feedback and colourful representation make it easy to understand complex fluid dynamics concepts. In the context of video games, however, the colours are a bit unnecessary. This can be easily rectified if someone were to use it in their game, but they would need to make a number of modifications to the existing code to make it independent of user input (for the more common uses of fluids in games).
 
     Here is another example of a \textit{WebGL}-based fluid simulation available for free online, developed by Grant Kot.
 
@@ -178,7 +206,7 @@
         \caption{\textit{WebGL} Fluid Simulation by Grant Kot. \cite{webgl2}}
     \end{figure}
     
-    This simulation excels in visualising fluid interactions, particularly between liquids of varying masses - represented by four distinct colors. You can use the mouse and different keybinds to manipulate the fluid with a range of forces, such as lifting a portion of it up (as shown in figure 3), or creating dynamic collision objects that follow the cursor. It behaves with realistic motion that is driven by gravity and internal pressure and user interaction is only optional.
+    This simulation excels in visualising fluid interactions, particularly between liquids of varying masses - represented by four distinct colours. You can use the mouse and different keybinds to manipulate the fluid with a range of forces, such as lifting a portion of it up (as shown in figure 3), or creating dynamic collision objects that follow the cursor. It behaves with realistic motion that is driven by gravity and internal pressure and user interaction is only optional.
 
     Conversely, there is a performance issue with this project. During testing, the simulation peaked at around fifty frames per second. This is completely fine when exploring the fluid in a web browser or for educational demos, but becomes a much larger issue when using it as a video game asset, as video games prefer to be consistently above 60 frames per second - to maintain responsiveness and overall gameplay fluidity. Further optimisations would be required of this simulation in order to utilise it in a video game environment.
 
@@ -266,7 +294,7 @@
 
     \subsubsection{OpenGL vs. Vulkan}
 
-    As a graphics API was decided, the next choice was between \textit{OpenGL} and \textit{Vulkan}. \textit{DirectX} was not considered due to its lack of cross-platform compatability, as it was specifically designed for \textit{Windows} and \textit{XBox}. This was a relatively simple decision, as \textit{OpenGL} is considered the beginner option, and \textit{Vulkan} is not recommended for new graphics programmers by Alexander Overvoorde, the writer of \textit{Vulkan Tutorial}: ``Vulkan is targeted at experienced graphics programmers. You should start with an easier language than C++ and an easier API than Vulkan'' \cite{vulkancomment}. Although \textit{Vulkan} is a better choice for future-proofing (as \textit{OpenGL} is no longer receiving updates), this reasoning was not significant justification due to the ability to rewrite this project with more experience and time. Thus, \textit{OpenGL} was selected, accompanied by the C++ language due to previous experience with the language.
+    As a graphics API was decided, the next choice was between \textit{OpenGL} and \textit{Vulkan}. \textit{DirectX} was not considered due to its lack of cross-platform compatability, as it was specifically designed for \textit{Windows} and \textit{XBox}. This was a relatively simple decision, as \textit{OpenGL} is considered the beginner option, and \textit{Vulkan} is not recommended for new graphics programmers by Alexander Overvoorde, the writer of \textit{Vulkan Tutorial}: ``Vulkan is targeted at experienced graphics programmers. You should start with an easier language than C++ and an easier API than Vulkan'' \cite{vulkancomment}. Although \textit{Vulkan} is a better choice for future-proofing (as \textit{OpenGL} is no longer receiving updates), this reasoning was not significant justification; the project can be rewritten in the future with more time and experience. Thus, \textit{OpenGL} was selected, accompanied by the C++ language due to previous experience with the language.
     
     \subsection{Fluid Simulation methods}
 
@@ -321,7 +349,7 @@
         \caption{Computational grid with densities and velocities defined in their centres \cite{stam}}   
     \end{figure}
 
-    Figure 11 is a computation grid of cells by Jos Stam. There is an extra layer of cells around the grid to account for boundary conditions. This method utilises Equation 2 to produce a density diffusion solver, where each cell either adds or removes density from its neighbours. Due to distance of other cells, there is no need to include any others in this calculation, as their impact will be negligible and slow the simulation down quite considerably.
+    Figure 11 is a computational grid of cells by Jos Stam. There is an extra layer of cells around the grid to account for boundary conditions. This method utilises Equation 2 to produce a density diffusion solver, where each cell either adds or removes density from its neighbours. Due to distance of other cells, there is no need to include any others in this calculation, as their impact will be negligible and slow the simulation down quite considerably.
 
     \begin{figure}[H]
         \begin{center}
@@ -330,9 +358,25 @@
         \caption{Density exchange through diffusion between neighbours \cite{stam}}   
     \end{figure}
 
-    After this diffusion has occured, the centres of the grids are considered as particles and are traced through the velocity field, calculated with Equation 1. In order to convert the ``particles" back into grid cells, there are two grids used: a grid of cells containing the old density values and a second grid containing the new density values. The new positions are traced backwards through the velocity field to find the original grid cell, and assign this value to the new position.
+    After this diffusion has occured, the centres of the grids are treated as sample points traced through the velocity field, similar to Lagrangian methods. In order to convert the ``particles" back into grid cells, there are two grids used: a grid of cells containing the old density values and a second grid containing the new density values. The new positions are traced backwards through the velocity field to find the original grid cell, and assign this value to the new position.
 
-    There are a lot of different ways to achieve fluid flow with Eulerian implementations and this is a very oversimplified description, but the main premise of this method is to utilise grids and the two equations mentioned.
+    Finally, there is the projection step, which ensures that the updated velocity fields are mass conserving, by enforcing the incompressibility condition: 
+    
+    \begin{equation}
+        \nabla \cdot \textbf{u} = 0
+    \end{equation}
+    
+    In order to perform this step, the divergence of the velocity field is computed and a Poisson equation is solved for some pressure-like field $p$
+    
+    \begin{equation}
+        \nabla^2{p} = \nabla \cdot \textbf{u}
+    \end{equation} 
+    
+    This is then utilised to project the velocity on to a divergence-free value
+    
+    \begin{equation}
+        \textbf{u}_{new} = \textbf{u} - \nabla{p}
+    \end{equation}
 
     \begin{figure}[H]
         \begin{center}
@@ -341,40 +385,157 @@
         \caption{Eulerian simulation \cite{eulerianeg}}
     \end{figure}
 
+    There are many different methods to achieve fluid flow with Eulerian implementations, but more detail is out of the scope of this dissertation.
+
     \subsubsection{Lagrangian Implementations}
 
-    Langrangian implementations of fluid flow involve treating the fluid as small parcels or particles of fluid. These particles influence their neighbours but are not confined to grid cells. As a result, more calculations are required in determining which particles are within influenceable range. A classic example of a Lagrangian method is Smoothed Particle Hydrodynamics (SPH).
+    Lagrangian implementations of fluid flow involve treating the fluid as small parcels or particles of fluid. These particles influence their neighbours but are not confined to grid cells. As a result, more calculations are required in determining which particles are within effective range. A classic example of a Lagrangian method is Smoothed Particle Hydrodynamics (SPH).
 
-    SPH was initially developed by Gingold, Monaghan and Lucy in 1977 for the pusposes of astrophysics\cite{sca}. Since the particles are independent nodes, this method is meshfree, which improves its implementation and parallelisation. Considering the expensive computations required, parallelisation is fundamental in improving performance for the simulation. Furthermore, conservation of mass is guaranteed; the particles represent mass and the particles do not disappear at any stage.
+    SPH was initially developed by Gingold, Monaghan and Lucy in 1977 for the purposes of astrophysics\cite{sca}. Since the particles are independent nodes, this method is meshfree, which improves parallelisation. Considering the expensive computations required, parallelisation is fundamental in improving performance. Furthermore, conservation of mass is guaranteed; the particles represent mass and the particles do not disappear at any stage of the simulation.
 
-    Furthermore, this method simplifies the Navier-Stokes equations the following generalised SPH equation:
+    Furthermore, this method utilises the Navier-Stokes equations to produce the following generalised SPH equation:
 
     \begin{equation}
         A_S(\textbf{r}) = \sum_{j}{m_j \frac{A_j}{\rho_j}W(\textbf{r} - \textbf{r}_j, h)}
     \end{equation}
 
-    For each particle with location $\textbf{r}$, we iterate through every other particle $j$ with mass $m_j$, density $\rho_j$, position $\textbf{r}_j$ and property $A_j$ to calculate that particle's total property quantity. $W$ is a smoothing kernel that is defined differently for each property. After a large enough distance $\lvert\textbf{r} - \textbf{r}_j\rvert$, also referred to as the smoothing radius, the value of the smoothing kernel becomes 0; the particle is too far away to provide any significant influence. As a result, this calculation only needs to be performed on particles that are close enough, a key optimisation step for this method.
+    For each particle with position $\textbf{r}$, every other particle $j$ with mass $m_j$, density $\rho_j$, position $\textbf{r}_j$ and property $A_j$ is iterated through to calculate that particle's total property quantity. $W(r, h)$ is a smoothing kernel that is defined differently for each property. After a large enough distance $\lvert\textbf{r} - \textbf{r}_j\rvert$, also referred to as the smoothing radius, the value of the smoothing kernel becomes 0; the particle is too far away to provide any significant influence. As a result, this calculation only needs to be performed on particles that are close enough, a key optimisation step for this method. Further details regarding this method can be found in the \hyperref[sec:whatwasdoneandhow]{"What Was Done and How"} section of this dissertation.
+
+    \subsubsection{Chosen Implementation}
+
+    Due to the simpler parallelisation and streamlined process of meshfree methods, this dissertation will focus on the implementation and optimisation of a Lagrangian fluid simulation, specifically utilising Smoothed Particle Hydrodynamics.
 
     \section{What Was Done and How}
+    \label{sec:whatwasdoneandhow}
+
+    This section talks about everything learned and implemented throughout the development process.
+
+    \subsection{Software Development Model}
+
+    This project adopts the agile development model. There are four core values of this method\cite{geekagile}:
+    
+    \begin{itemize}
+        \item Individuals and Interactions over Processes and Tools
+        \item Working Software over Comprehensive Documentation
+        \item Customer Collaboration over Contract Negotiation
+        \item Responding to Change over Following a Plan
+    \end{itemize}
+
+    While not all of these principles are directly applicable in this context, the emphasis on adaptability remains essential. Regular weekly meetings with the project supervisor supports an iterative approach and allows the scope to shift due to time constraints or technical challenges. For example, the graphics rendering method was switched from \textit{OpenGL} to \textit{Unity} in order to guarantee completion within the given timeframe. Additionally, as the primary goal of this dissertation is optimisation, extensive documentation is unnecessary; the simulation only needs to be demonstable and functional. Development was carried out in short iterations, with weekly goals set and versioned using \textit{Git}.
+
+    \subsection{Graphics Rendering Pipeline}
+
+    In order to utilise the \textit{OpenGL} graphics library\cite{opengl}, it is important to first understand the API and the graphics rendering pipeline. This was achieved with the tutorials provided by the\textit{Learn OpenGL} website created by Joey de Vries\cite{learnopengl} as well as resources provided by the project supervisor.
+
+    The graphics pipeline takes a set of 3D coordinates as an input and transforms them into coloured 2D pixels that are displayed on the screen. Developers interact with this pipeline through the use of shaders, which are programs executed in parallel on the GPU.
+
+    \begin{figure}[H]
+        \noindent\wideimage[]{graphicsPipeline.png}
+        \caption{Graphics Rendering Pipeline \cite{learnopengl}}
+    \end{figure}
+
+    \subsubsection{Vertex Shader}
+
+    Vertex shaders process vertices and calculates their coordinates in clip space. This tells the computer if the vertex is in camera view or if it should be discarded \cite{shadertutorial}. They can be used to perform calculations on models, such as rotations and translations. They utilise uniform matrices, usually called model, view and projection that are passed to the shader from the main program.
+
+    \paragraph{Model}matrices are used to represent the centre of the model being drawn by the shader, which has been transformed into the necessary position in the world. Multiplying a vertex by this value describes where the vertex exists relative to the centre of the model.
+
+    \paragraph{View}matrices describe the camera's position and multiplying this matrix with the vertex's world position ($model \cdot vertex$) determines the vertex's position relative to the camera.
+
+    \paragraph{Projection}matrices describe the perspective of the camera, including variables such as fov and aspect ratio. These values can distort and scale the appearance of the model and thus need to be considered. Multiplying this matrix with the resultant calculation of the other matrices will achieve this.
+
+    An example of a very basic \textit{OpenGL} vertex shader is shown below.
+
+    \begin{lstlisting}[language=glsl]
+        #version 330 core
+
+        layout (location = 0) in vec3 position;
+
+        uniform mat4 model;
+        uniform mat4 view;
+        uniform mat4 projection;
+
+        void main()
+        {
+            gl_Position = projection * view * model * vec4(position, 1.0);
+        }
+        
+    \end{lstlisting}
+
+    \subsubsection{Geometry Shader}
+
+    This optional shader takes a collection of vertices that form a primitive, and uses them to form other shapes. An example of this may involve producing a new vertex position that splits a triangle in half to form two smaller triangles. This step is not utilised in this project.
+
+    \subsubsection{Shape Assembly}
+
+    Shape assembly, or primitive assembly, uses the data from either the vertex or geometry (if used) shader to draw the primitive defined, usually a triangle.
+
+    \subsubsection{Rasterization}
+
+    Rasterization involves mapping the resulting primitives to the corresponding pixels on the final screen, producing fragments. A fragment is all the data required for the API to render a single pixel. Then, all fragments not within the camera view are discarded.
+
+    \subsubsection{Fragment Shader}
+
+    The fragment shader is used to determine the final colour of the pixels. Since only the vertices of the primitives are given, interpolation is used to calculate the colour of the pixels in between the vertices. This is done automatically by the graphics API by checking its position and distance relative to all of the primitive's vertices and determines the colour based off this value. For example, setting each vertex of a triangle primitive to a different primary light colour (red, green, blue), produces the following result:
+
+    \begin{figure}[H]
+        \begin{center}
+            \noindent\includegraphics{rainbowTriangle.png}
+            \caption{Rainbow Triangle rendered with OpenGL}
+        \end{center}
+    \end{figure}
+
+    This is done by passing the desired RGBA values of the vertices through to the vertex shader, which then passes the data through the pipeline to the fragment shader.
+
+    \subsubsection{Tests and Blending}
+
+    The final stage of the pipeline involves setting the opacity, or alpha of the pixels and adjusting/blending their colours appropriately. Also, if any models are overlapping, the colours of the model at the back are discarded as they should appear covered by the front model.
+
+    \subsection{GLFW and GLAD}
+
+    Creating an \textit{OpenGL} context and a window to draw the graphics in are OS-specific operations. As a result, an external library is required. \textit{GLFW}\cite{glfw} is a library written in C that does all of this. Additionally, \textit{OpenGL} is a specification. It is up to the manufacturer of the graphics card to implement the specification to a driver compatible with the card. As a result, the specific location of \textit{OpenGL} functions are not consistent and need to be retrieved manually. \textit{GLAD}\cite{glad} is a library that does this automatically.
 
     \subsection{Learn OpenGL}
 
+    Using this knowledge of the rendering pipeline, the \textit{OpenGL} specification and the \textit{Learn OpenGL} website, it is now possible to render particles on to the screen and apply transformations to them. See the \hyperref[sec:appendices]{appendices} for code snippets and graphics produced from this tutorial. 
+    
+    \begin{figure}[H]
+        \begin{center}
+            \noindent\includegraphics[width=0.9\textwidth]{openGLProg.png}
+            \caption{Final progress with OpenGL}
+        \end{center}
+    \end{figure}
+    
+    Learning the theory behind the graphics rendering pipeline and OpenGL took longer than anticipated. It was at this point that the decision to swap to Unity was made. Figure 16 displays the final progress achieved with \textit{OpenGL} and C++. In the simulation, 1000 particles are rendered in a grid-like structure. They move downwards as a result of a gravitational force and bounce off the ``floor" ($y = 0$) with slight damping. There are currently no forces calculated between the particles and as a result they move through each other.
+
+    \subsection{Unity CPU}
+
+    The following section describes the process taken to implement a fluid simulation using the CPU and C\#.
+
+    \subsubsection{Particles}
+
+    The first step to simulating a fluid using Smoothed Particle Hydrodynamics is to create a grid of particles to represent the fluid. This is easily done in \textit{Unity} by creating a prefab of the built-in sphere object and reducing its scale.
+    
 
     \section{Results and Evaluation}
+    \label{sec:resultsandevaluation}
     \subsection{Results}
     \subsection{Evaluation}
 
     \section{Conclusion}
+    \label{sec:conclusion}
     \subsection{Aims and Objectives}
     \subsection{What Was Learned}
     \subsection{Future Work}
 
     \newpage
     \section{References}
+    \label{sec:references}
     \bibliography{references}
 
     \newpage
     \section{Appendices}
+    \label{sec:appendices}
 
     \subsection{Unity Asset Store}
 
@@ -393,5 +554,6 @@
         \caption{Example of surface-only Unity asset \cite{stylized}}
     \end{figure}
 
+    \subsection{Learn OpenGL and graphics}
 
 \end{document}

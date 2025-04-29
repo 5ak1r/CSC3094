@@ -170,11 +170,11 @@ public class ParticleManagerGPU : MonoBehaviour
 
     private void OnDestroy()
     {
-        _argsBuffer.Release();
-        _particlesBuffer.Release();
-        _particleIndicesBuffer.Release();
-        _cellIndicesBuffer.Release();
-        _lookupTableBuffer.Release();
+        _argsBuffer?.Release();
+        _particlesBuffer?.Release();
+        _particleIndicesBuffer?.Release();
+        _cellIndicesBuffer?.Release();
+        _lookupTableBuffer?.Release();
     }
 
     private void SpawnParticles()
