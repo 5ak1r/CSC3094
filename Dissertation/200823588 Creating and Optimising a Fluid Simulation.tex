@@ -6,6 +6,7 @@
 \usepackage{titling}
 \usepackage{float}
 \usepackage[hidelinks]{hyperref}
+\usepackage{amsthm}
 
 \graphicspath{{assets/}}
 \bibliographystyle{IEEEtranN}
@@ -145,15 +146,14 @@
     This section shows the research made on this dissertation. It talks about relevant background resources that were used for different parts of the development process.
     
     \subsection{Strategy}
-    There are four main components of this project:
+    There are three main components that needed to be researched at the start of this project:
     \begin{itemize}
         \item Exploring existing fluid simulations
         \item Software Tools
-        \item How fluid simulations work
-        \item How to optimise this project
+        \item Fluid simulation methods
     \end{itemize}
     \sloppy
-    All four of these sections are integral in achieving a functional, lightweight simulation and thus needed to be researched before beginning. Below is an outline of the papers, videos and other resources that were used to understand these topics.
+    All three of these sections are integral in achieving a functional, lightweight simulation and thus needed to be researched before beginning. Below is an outline of the papers, videos and other resources that were used to understand these topics.
 
     \subsection{Exploring existing fluid simulations}
     It is important to understand current existing options that are available and describe their benefits and limitations in the context of video games.
@@ -268,7 +268,68 @@
 
     As a graphics API was decided, the next choice was between \textit{OpenGL} and \textit{Vulkan}. \textit{DirectX} was not considered due to its lack of cross-platform compatability, as it was specifically designed for \textit{Windows} and \textit{XBox}. This was a relatively simple decision, as \textit{OpenGL} is considered the beginner option, and \textit{Vulkan} is not recommended for new graphics programmers by Alexander Overvoorde, the writer of \textit{Vulkan Tutorial}: ``Vulkan is targeted at experienced graphics programmers. You should start with an easier language than C++ and an easier API than Vulkan'' \cite{vulkancomment}. Although \textit{Vulkan} is a better choice for future-proofing (as \textit{OpenGL} is no longer receiving updates), this reasoning was not significant justification due to the ability to rewrite this project with more experience and time. Thus, \textit{OpenGL} was selected, accompanied by the C++ language due to previous experience with the language.
     
+    \subsection{Fluid Simulation methods}
+
+    This section talks about two simulation methods involving the Navier-Stokes equations.
+
+    \subsubsection{Navier-Stokes Equations}
+
+    \begin{equation}
+        \frac{\partial{\textbf{u}}}{\partial{t}} + (\textbf{u} \cdot\nabla)\textbf{u} = v\nabla^2 \textbf{u} - \frac{1}{\rho}\nabla p + \textbf{f}
+    \end{equation}
+
+    Equation 1 is a non-linear partial differential equation that describes fluid motion\cite{slides}. The first term, $\frac{\partial{\textbf{u}}}{\partial{t}}$, represents the change in velocity over time at a fixed point, where $\textbf{u}$ is the velocity field of the fluid. $-(\textbf{u}\cdot\nabla)\textbf{u}$ is called the advection term. Advection is described as ``the transport of a substance or of heat by the flow of a liquid"\cite{cambridge}. In fluid dynamics, this may also refer to the transport of a property due to fluid flow. $\nabla$ is a vector of partial derivatives: $\nabla = (\frac{\partial}{\partial x}, \frac{\partial}{\partial y}, \frac{\partial}{\partial z})$. Taking the dot product of \textbf{u}, a vector, and this operator, $\textbf{u}\cdot\nabla$, gives us a directional derivative - it describes the direction that a property is changing.
+
+    \begin{equation}
+        (\textbf{u}\cdot\nabla)\textbf{u} \equiv u_x \frac{\partial \textbf{u}}{\partial x} + u_y \frac{\partial \textbf{u}}{\partial y} + u_z \frac{\partial \textbf{u}}{\partial z}
+    \end{equation}
+
+    This term thus describes the advection of velocity, which is also referred to as convective acceleration, ``the effect of acceleration of a flow with respect to space''\cite{nswikipedia}.
+
+    There are three more terms on the right hand side of the equation: the diffusion/viscosity term, pressure and external forces. Sometimes written as $\nabla \cdot (v\nabla\textbf{u})$, the viscosity term describes how the fluid motion is damped due to its viscosity. Fluids with a higher viscosity constant $v$ tend to have stronger resistance, resulting in stronger smoothing and slower flows. $\nabla^2$ is also known as the Laplacian operator. The Laplacian is obtained by summing the second partial derivative with respect to each variable component-wise:
+
+    \begin{equation}
+        \nabla^2\textbf{u} = (\frac{\partial^2{u_x}}{\partial{x^2}} + \frac{\partial^2{u_x}}{\partial{y^2}} + \frac{\partial^2{u_x}}{\partial{z^2}}, \frac{\partial^2{u_y}}{\partial{x^2}} + \frac{\partial^2{u_y}}{\partial{y^2}} + \frac{\partial^2{u_y}}{\partial{z^2}}, \frac{\partial^2{u_z}}{\partial{x^2}} + \frac{\partial^2{u_z}}{\partial{y^2}} + \frac{\partial^2{u_z}}{\partial{z^2}})
+    \end{equation}
+
+    Multiplying this value by a viscosity constant determines how much the velocity is smoothed or evened-out by viscous forces. If the Laplacian is positive, it means that the velocity is lower at that point than its neighbours, so a larger positive force is applied; a negative Laplacian applies force in the opposite direction.
+
+    Pressure is simply defined as ``the amount of force acting on a certain area"\cite{bbcbitesize}, or force acting per unit area. As a result, a pressure gradient produces a force that pushes the fluid from areas of high pressure to areas of low pressure. This is described by the second term, $-\frac{1}{\rho}\nabla{p}$, where $\nabla{p}$ is the pressure gradient, and $\rho$ is the density of the fluid at this position. Since gradients point in the increasing direction, the negative is taken so the fluid moves away from the direction of increasing pressure. Additionally, this gradient value gives force acting per unit volume, but the previous terms have been accelerations. This is corrected using Newton's Second Law, $F = ma$. Since density is the mass per unit volume of the fluid, the pressure gradient is multiplied by the reciprocal of the density to obtain the acceleration. Below is a correction of the SI units to obtain acceleration.
+
+    \begin{proof}
+        $$\left[\nabla{p}\right] = \frac{N}{m^3} = \frac{kg \cdot ms^{-2}}{m^3} = \frac{kg}{m^2\cdot s^2}$$
+        $$\left[\rho\right] = \frac{kg}{m^3}$$
+        $$\frac{\left[\nabla{p}\right]}{\left[\rho\right]} = \frac{kg}{m^2 \cdot s^2} \cdot \frac{m^3}{kg} = \frac{m}{s^2}$$
+    \end{proof}
+    
+    The final term accounts for external forces that act on the fluid, such as gravity. These forces are included to correctly describe changes in momentum according to Newton's Second Law.
+
+    \begin{equation}
+        \frac{\partial{\rho}}{\partial{t}} = -(\textbf{u}\cdot\nabla)\rho + \kappa\nabla^2 \rho + S
+    \end{equation}
+
+    Equation 4 has very similar structure to Equation 1, however this one is used in the calculation of a scalar quantity, density. As a result, there is no pressure force term, and external forces is replaced by an external source term S, which adds or removes density from the system. The viscosity constant is also replaced with $\kappa$, the diffusion constant. This measures how fast the property (in this case density) diffuses through the fluid.
+
+    \subsubsection{Eulerian Implementations}
+
+    Eulerian, or grid-based implementations for fluid dynamics treat the fluid as a grid of cells.
+    
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics{gridFluid.png}
+        \end{center}
+        \caption{Computational grid with densities and velocities defined in their centres \cite{stam}}   
+    \end{figure}
+
+    Figure 11 is a visualisation of this method by Jos Stam. There is an extra layer of cells around the grid to account for boundary conditions.
+
+    \subsubsection{Lagrangian Implementations}
+
+
     \section{What Was Done and How}
+
+    \subsection{Learn OpenGL}
+
 
     \section{Results and Evaluation}
     \subsection{Results}
@@ -302,5 +363,6 @@
         \noindent\wideimage[]{stylizedWaterURP.png}
         \caption{Example of surface-only Unity asset \cite{stylized}}
     \end{figure}
+
 
 \end{document}
