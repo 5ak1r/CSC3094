@@ -282,7 +282,7 @@ public class ParticleManagerCPU : MonoBehaviour
             if (dist < EPSILON) continue;
 
             Vector3 dir = offset / dist;
-            pressureForce += (particle.pressure + other.pressure) * 0.5f * PARTICLE_MASS * SpikyKernelGradient(dist, dir) / other.density;
+            pressureForce += (particle.pressure + other.pressure) / (2 * other.density) * PARTICLE_MASS * SpikyKernelGradient(dist, dir);
         }
 
         return pressureForce;

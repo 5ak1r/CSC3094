@@ -9,6 +9,8 @@
 \usepackage{amsthm}
 \usepackage{listings}
 \usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage{algpseudocodex}
 
 \lstdefinelanguage{glsl}{
     keywords = {if, else, continue, break, for, mat4, vec4, vec3, vec2, return, true, false, bool, int, float, void, char, sampler2D, struct, discard, in, out, layout, version, uniform},
@@ -399,7 +401,7 @@
         A_S(\textbf{r}) = \sum_{j}{m_j \frac{A_j}{\rho_j}W(\textbf{r} - \textbf{r}_j, h)}
     \end{equation}
 
-    For each particle with position $\textbf{r}$, every other particle $j$ with mass $m_j$, density $\rho_j$, position $\textbf{r}_j$ and property $A_j$ is iterated through to calculate that particle's total property quantity. $W(r, h)$ is a smoothing kernel that is defined differently for each property. After a large enough distance $\lvert\textbf{r} - \textbf{r}_j\rvert$, also referred to as the smoothing radius, the value of the smoothing kernel becomes 0; the particle is too far away to provide any significant influence. As a result, this calculation only needs to be performed on particles that are close enough, a key optimisation step for this method. Further details regarding this method can be found in the \hyperref[sec:whatwasdoneandhow]{"What Was Done and How"} section of this dissertation.
+    For each particle with position $\textbf{r}$, every other particle $j$ with mass $m_j$, density $\rho_j$, position $\textbf{r}_j$ and property $A_j$ is iterated through to calculate that particle's total property quantity. $W(r, h)$ is a smoothing kernel that is defined differently for each property, where $r$ is the distance between the two points $\lvert\textbf{r} - \textbf{r}_j\rvert$ and $h$ is the smoothing radius for each particle. After a large enough distance $r > h$, the value of the smoothing kernel becomes 0; the particle is too far away to provide any significant influence. As a result, this calculation only needs to be performed on particles that are close enough, a key optimisation step for this method. Further details regarding this method can be found in the \hyperref[sec:whatwasdoneandhow]{"What Was Done and How"} section of this dissertation.
 
     \subsubsection{Chosen Implementation}
 
@@ -508,14 +510,226 @@
     
     Learning the theory behind the graphics rendering pipeline and OpenGL took longer than anticipated. It was at this point that the decision to swap to Unity was made. Figure 16 displays the final progress achieved with \textit{OpenGL} and C++. In the simulation, 1000 particles are rendered in a grid-like structure. They move downwards as a result of a gravitational force and bounce off the ``floor" ($y = 0$) with slight damping. There are currently no forces calculated between the particles and as a result they move through each other.
 
+    \subsection{Simulation Loop}
+
+    This section provides the theory and pseudocode for the update loop of this simulation. Undefined variables that appear in the pseudocode are assumed to be defined constants outside the simulation loop. The following implementation is presented in the paper ``Particle-Based Fluid Simulation for Interactive Applications'', by Matthias Müller, David Charypar and Markus Gross\cite{sca}.
+
+    \begin{algorithm}
+        \caption{Simulation Loop}
+
+        \begin{algorithmic}
+            \ForAll{particles $i$}
+                \State calculate density and pressure
+            \EndFor
+
+            \ForAll{particles $i$}
+                \State compute forces
+            \EndFor
+
+            \ForAll{particles $i$}
+                \State update velocity and position
+                \State resolve collisions
+            \EndFor
+        \end{algorithmic}
+
+    \end{algorithm}
+
+    \subsubsection{Density and Pressure}
+
+    Using the aforementioned generalised SPH equation, it is possible to compute the density of each particle by replacing $A$ with $\rho$. Furthermore, in this simulation each particle will be the same size and mass $m$.
+
+    \begin{equation}
+        \rho_S(\textbf{r}) = \sum_{j}{m_j \frac{\rho_j}{\rho_j}W(\textbf{r} - \textbf{r}_j, h)} \equiv m\sum_{j}{W(\textbf{r} - \textbf{r}_j, h)}
+    \end{equation}
+
+    The chosen smoothing kernel for density is the Poly6 kernel described in the paper above\cite{sca}. This kernel is defined as:
+
+    \begin{equation}
+        W_{poly6}(\textbf{r}, h) = \frac{315}{64\pi{h}^9}
+        \begin{cases}
+            (h^2 - r^2)^3 & \text{if } 0 \leq r \leq h \\
+            0 & \text{otherwise}
+        \end{cases}
+    \end{equation}
+
+    For the purposes of speed, we use a modified version of the ideal gas equation to calculate pressure
+
+    \begin{equation}
+        p = k(\rho - \rho_0)
+    \end{equation}
+
+    where $k$ is a unique gas constant for the fluid and $\rho_0$ is the fluid's resting density.
+
+    The pseudocode for this calculation programatically is as follows
+
+    \begin{algorithm}[H]
+        \caption{\textsc{CalculateDensity}(Particle $p$)}
+    
+        \begin{algorithmic}
+            \State total $=$ 0
+            
+            \ForAll{particles $i$}
+                \State distance $=$ \textsc{magnitude}($p$.position - $i$.position)
+
+                \If{distance $\leq$ smoothingRadius}
+                    \State total $+=$ \textsc{poly6}(distance)
+                \EndIf
+            \EndFor
+
+            \State $p$.density $=$ particleMass $\cdot$ total
+            \State $p$.pressure $=$ gasConstant $*$ ($p$.density $-$ restDensity)
+        \end{algorithmic}
+
+    \end{algorithm}
+
+    Since the result of \textsc{poly6} is 0 when $r > h$, we save computation by skipping the calculation entirely.
+
+    \subsubsection{Forces}
+
+    Once all of the particles have had their properties updated, it is now possible to calculate the forces they exert on each other. The first force calculated will be the pressure force, which is a gradient property. We can take the derivative of the generalised property equation to achieve this.
+
+    \begin{equation}
+        \nabla A_S(\textbf{r}) = \sum_{j}{m_j \frac{A_j}{\rho_j}\nabla{W(\textbf{r} - \textbf{r}_j, h)}}
+    \end{equation}
+
+    For the pressure force, we use a different smoothing kernel, $W_{spiky}$
+
+    \begin{equation}
+        W_{spiky}(\textbf{r}, h) = \frac{15}{\pi{h}^6}
+        \begin{cases}
+            (h-r)^3 & \text{if } 0 \leq r \leq h \\
+            0 & \text{otherwise}
+        \end{cases} 
+    \end{equation}
+
+    The gradient of this kernel is shown below\cite{spikygrad}. A proof may be found in the appendices.
+
+    \begin{equation}
+        \nabla W_{spiky}(\textbf{r}, h) = \frac{-45}{\pi{h}^6}
+        \begin{cases}
+            (h-r)^2 \cdot \frac{\textbf{r}}{r} & \text{if } 0 \leq r \leq h \\
+            0 & \text{otherwise}
+        \end{cases}
+    \end{equation}
+
+    Applying the pressure term from the Navier-Stokes equations to the general property equation produces the following calculation for pressure force
+
+    \begin{equation}
+        \textbf{f}^{pressure}_i = -\sum_{j}{m_j}\frac{p_j}{\rho_j}\nabla{W(\textbf{r}_i - \textbf{r}_j, h)}
+    \end{equation}
+
+    Note that the negative of this calculation is taken to push the particle away from the neighbour as intended. However, this force is asymmetric as the particles do not have equal pressure. There is a simple fix proposed by the paper that takes the averages of their pressures. Thus the final calculation becomes
+
+    \begin{equation}
+        \textbf{f}^{pressure}_i = -m\sum_{j}\frac{p_i + p_j}{2\rho_j}\nabla{W(\textbf{r}_i - \textbf{r}_j, h)}
+    \end{equation}
+
+    The pseudocode for this computation programatically is as follows
+
+    \begin{algorithm}[H]
+        \caption{\textsc{CalculatePressureForce}(Particle $p$)}
+    
+        \begin{algorithmic}
+            \State total $\gets$ [0, 0, 0]
+            
+            \ForAll{particles $i$}
+                \State offset $\gets$ $p$.position $-\ i$.position
+                \State distance $=$ \textsc{magnitude}(offset)
+
+                \If{distance $<$ epsilon}
+                    continue
+                \EndIf
+
+                \State direction $\gets$ offset $/$ distance
+                \State total $-=$ ($p$.pressure $+\ i$.pressure) $*$ 0.5 $*$ \textsc{SpikyGradient}(distance, direction)
+            \EndFor
+
+            \Return total $*$ particleMass
+        \end{algorithmic}
+
+    \end{algorithm}
+
+    This implementation ensures that particles do not consider themselves in the calculation (to prevent a division by zero error or the force exploding). We compare the distance to an extremely small epsilon value to account for floating point error.
+    
+    Next is the viscosity force. We can use the viscosity term in Equation 1 and the generalised property equation, Equation 6, to obtain the following:
+
+    \begin{equation}
+        \textbf{f}^{viscosity}_{i} = v\nabla^2\textbf{u} = m\sum_{j}{\frac{\textbf{u}_i}{\rho_j}\nabla^2{W(\textbf{r} - \textbf{r}_j, h)}}
+    \end{equation}
+
+    There is another unique kernel that is used for the viscosity force, due to the requirement that velocity is always positive. Negative viscosity forces would increase the relative velocity of the particles, which is not representative of viscous behaviour.
+
+    \begin{equation}
+        W_{viscosity}(\textbf{r}, h) = \frac{15}{2\pi{h}^3}
+        \begin{cases}
+            -\frac{r^3}{2h^3}+\frac{r^2}{h^2}+\frac{h}{2r} - 1 & \text{if } 0 \leq r \leq h \\
+            0 & otherwise
+        \end{cases}
+    \end{equation}
+
+    We only utilise the Laplacian of this kernel, defined as
+
+    \begin{equation}
+        \nabla^2W(\textbf{r}, h) = \frac{45}{\pi{h}^6}(h - r)
+    \end{equation}
+
+    As the initial calculations are very similar to the pressure force, we can just add the viscosity in the same method.
+
+    \begin{algorithm}[H]
+        \caption{\textsc{CalculatePressureAndViscosityForce}(Particle $p$)}
+
+        \begin{algorithmic}
+            \State totalPressure $\gets$ [0, 0, 0]
+            \State totalViscosity $\gets$ [0, 0, 0]
+
+            \ForAll{particles $i$}
+                \State offset $\gets$ $p$.position $-\ i$.position
+                \State distance $=$ \textsc{magnitude}(offset)
+
+                \If{distance $<$ epsilon}
+                    continue
+                \EndIf
+
+                \State direction $\gets$ offset $/$ distance
+                \State totalPressure $-=$ ($p$.pressure $+\ i$.pressure) $*$ 0.5 $*$ \textsc{SpikyGradient}(distance, direction)
+                \State totalViscosity += \textsc{ViscosityLaplacian}(distance) *
+                \Statex \hspace{\algorithmicindent} ($i$.velocity $-\ p$.velocity) / $i$.density
+            \EndFor
+            
+            $p$.force = particleMass * (totalPressure + totalViscosity)
+        \end{algorithmic}
+
+    \end{algorithm}
+
+    There are also additional forces to consider, such as surface tension and external forces. Surface tension is not implemented in the CPU implementation and thus will be mentioned in the GPU section. Additionally, the only external force implemented in the CPU version is gravitational force, which is simple - just add $(0, -9.81 * \text{particleMass}, 0)$ to the total force calculation.
+
+    \subsubsection{Update Velocity and Position}
+    Now that the forces have been calculated, the SUVAT equation $v = u + a\Delta{t}$ can be utilised to update the final velocity. Then, Euler integration to calculate the new position $s$ += $v\Delta{t}$. $\Delta{t}$ is a small, consistent time step that can be adjusted to increase simulation stability.
+
+    \begin{algorithm}[H]
+        \caption{\textsc{MoveParticle}}
+    
+        \begin{algorithmic}
+            \ForAll{particles $i$}
+                \State $i$.velocity += $i$.force / particleMass * deltaTime
+                \State $i$.position += $i$.velocity * deltaTime
+            \EndFor
+        \end{algorithmic}
+
+    \end{algorithm}
+
+    \subsubsection{Resolve Collisions}
+
+    This step is straightforward. The particles are confined to a box to prevent the particles from spreading out infinitely. To implement this, a range is defined in all three directions. If the new particle position would exceed this range, it instead becomes the value it is closest to. Then, a small dampening is applied and the velocity direction is flipped. An example implementation can be found in the appendices. To prevent stuttering at the boundaries, it is recommended to calculate the new velocity and position values in temporary variables first, resolve any collisions, and then assign these final values to the particle.
+
     \subsection{Unity CPU}
 
-    The following section describes the process taken to produce a fluid simulation using the CPU and C\#. The Smoothed Particle Hydrodynamics algorithm used in both the following implementations is presented in the paper ``Particle-Based Fluid Simulation for Interactive Applications'', by Matthias Müller, David Charypar and Markus Gross\cite{sca}.
+    The following section describes the process taken to produce a fluid simulation using the CPU and C\#.
 
     \subsubsection{Particles}
 
     \begin{figure}[H]
-        \wideimage[]{spawnParticles.png}
+        \wideimage[width=1.1\textwidth]{spawnParticles.png}
         \caption{Particle instantiation}
     \end{figure}
 
@@ -529,8 +743,6 @@
     The first step to simulating a fluid using Smoothed Particle Hydrodynamics is to create a grid of particles to represent the fluid. Their properties will be stored in a struct. Each particle struct will contain the following properties: a unique identification number, the current forces being applied to it, velocity, position, density and pressure. For convenience, the game object associated with the particle is initially included in the struct for quick position assignment, which may cause performance issues due to high memory usage when the struct is passed frequently in function calls.
     
     Next, the particles need to be rendered on to the screen. This is easily done in \textit{Unity} by creating a prefab of the built-in sphere object and instantiating the prefab many times. In order to make the simulation more realistic, a slight variance is added to the particles' starting positions, while maintaining the grid structure. For each instantiation, a particle struct is created and the game object is assigned to it. This struct is then added to a particles array, which contains every particle.
-
-    \subsubsection{Density and Pressure}
 
     
 
@@ -572,5 +784,29 @@
     \end{figure}
 
     \subsection{Learn OpenGL and graphics}
+
+    \subsection{Kernel Proofs}
+
+    \subsubsection{Spiky Kernel Gradient}
+
+    \begin{proof}
+        Spherical Gradient is defined as
+        $$\nabla f = \frac{\partial{f}}{\partial{r}}\textbf{e}_r + \frac{1}{r}\frac{\partial{f}}{\partial{\theta}}\textbf{e}_{\theta} + \frac{1}{r \sin{\theta}}\frac{\partial{f}}{\partial{\phi}}\textbf{e}_{\phi}$$
+        where $\textbf{e}_{r}, \textbf{e}_{\theta}, \textbf{e}_{\phi}$ are the unit direction vectors in the radial, polar and azimuthal directions respectively.
+
+        Due to the radial symmetry of smoothing kernels, this is simplified to just $$\nabla f = \frac{\partial{f}}{\partial{r}}\textbf{e}_r$$
+
+        $$\nabla W_{spiky}(r, h) = \frac{\partial{W}}{\partial{r}} \cdot \frac{\textbf{r}}{r}$$
+
+        $$\frac{\partial{W}}{\partial{r}} = \frac{15}{\pi{h}^6} \cdot \frac{\partial}{\partial{r}} (h - r)^3$$
+
+        Applying the chain rule
+
+        $$\frac{\partial}{\partial{r}} (h - r)^3 = 3 \cdot (h - r)^2 \cdot (-1) = -3(h - r)^2$$
+
+        Therefore
+
+        $$\nabla{W_{spiky}(r, h)} = \frac{15}{\pi{h}^6} \cdot -3(h - r)^2 \cdot \frac{\textbf{r}}{r} = \frac{-45}{\pi{h}^6}(h - r)^2 \cdot \frac{\textbf{r}}{r}$$
+    \end{proof}
 
 \end{document}
