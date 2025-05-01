@@ -171,6 +171,8 @@
         \end{itemize}
     \end{itemize}
 
+    \newpage
+
     \section{Background Review}
     \label{sec:backgroundreview}
     This section shows the research made on this dissertation. It talks about relevant background resources that were used for different parts of the development process.
@@ -406,6 +408,8 @@
     \subsubsection{Chosen Implementation}
 
     Due to the simpler parallelisation and streamlined process of meshfree methods, this dissertation will focus on the implementation and optimisation of a Lagrangian fluid simulation, specifically utilising Smoothed Particle Hydrodynamics.
+
+    \newpage
 
     \section{What Was Done and How}
     \label{sec:whatwasdoneandhow}
@@ -673,7 +677,7 @@
         \nabla^2W(\textbf{r}, h) = \frac{45}{\pi{h}^6}(h - r)
     \end{equation}
 
-    As the initial calculations are very similar to the pressure force, we can just add the viscosity in the same method.
+    As the initial calculations are very similar to the pressure force, the viscosity can be implemented in the same method.
 
     \begin{algorithm}[H]
         \caption{\textsc{CalculatePressureAndViscosityForce}(Particle $p$)}
@@ -722,11 +726,11 @@
 
     This step is straightforward. The particles are confined to a box to prevent the particles from spreading out infinitely. To implement this, a range is defined in all three directions. If the new particle position would exceed this range, it instead becomes the value it is closest to. Then, a small dampening is applied and the velocity direction is flipped. An example implementation can be found in the appendices. To prevent stuttering at the boundaries, it is recommended to calculate the new velocity and position values in temporary variables first, resolve any collisions, and then assign these final values to the particle.
 
-    \subsection{Unity CPU}
+    \subsection{Spawn Particles}
 
-    The following section describes the process taken to produce a fluid simulation using the CPU and C\#.
+    The following section describes the process taken to render particles in \textit{Unity} using the CPU and the GPU.
 
-    \subsubsection{Particles}
+    \subsubsection{CPU}
 
     \begin{figure}[H]
         \wideimage[width=1.1\textwidth]{spawnParticles.png}
@@ -740,16 +744,56 @@
         \end{center}
     \end{figure}
 
-    The first step to simulating a fluid using Smoothed Particle Hydrodynamics is to create a grid of particles to represent the fluid. Their properties will be stored in a struct. Each particle struct will contain the following properties: a unique identification number, the current forces being applied to it, velocity, position, density and pressure. For convenience, the game object associated with the particle is initially included in the struct for quick position assignment, which may cause performance issues due to high memory usage when the struct is passed frequently in function calls.
+    The first step to simulating a fluid using Smoothed Particle Hydrodynamics is to create a grid of particles to represent the fluid. Their properties will be stored in a struct. Each particle struct will contain the following properties: a unique identification number, the current forces being applied to it, velocity, position, density and pressure. For convenience, the game object associated with the particle is initially included in the struct for quick position assignment, which may cause performance issues due to high memory usage when the struct is passed frequently in function calls. In the CPU implementation, the highest number of particles tested was 1000.
     
     Next, the particles need to be rendered on to the screen. This is easily done in \textit{Unity} by creating a prefab of the built-in sphere object and instantiating the prefab many times. In order to make the simulation more realistic, a slight variance is added to the particles' starting positions, while maintaining the grid structure. For each instantiation, a particle struct is created and the game object is assigned to it. This struct is then added to a particles array, which contains every particle.
 
+    \subsubsection{Implementation Issues}
+
+    Once the particles were spawned and bouncing due to gravitational forces, the simulation loop described above was written in C\#. See the appendices for methods and calculations. However, the performance and frame rate of the simulation had dropped significantly, to around two frames per second. This is because our current implementation involves each particle comparing itself with every other particle in the simulation. This is an $O(n^2)$ algorithm and is too slow for large particle counts. The first optimisation involves the aforementioned idea that only the particle's neighbours influence it. The number of calculations performed can thus be considerably reduced with spatial hashing.
+
+    \subsubsection{GPU}
+
+    In order to render particles using the GPU, a technique called GPU Instancing is used. This is when all the models are rendered simulataneously with a single draw call. Initially, a shader found online was used in this project in order to speed up the process\cite{gpuinstanceshader}. The rendering logic used is from the same repository.
+
+    \subsection{Spatial Hashing}
+
+    Spatial Hashing is a technique that divides a space into a hash table. The table contains hashes that correspond to a small section of the space, a cell, and all the items or particles within that cell\cite{spatialpython}. This reduces the number of calculations as only the cell that the particle is in and its neighbouring cells need to be considered for each particle. 
     
+    This algorithm is used at the beginning of each simulation loop. Then, instead of iterating through every particle, each step only needs to go through the neighbour array. There are two slight variants of this method utilised in this project, one for the CPU and one for the GPU.
+
+    \subsubsection{Spatial Hash CPU}
+
+    This section describes the processes involved in the spatial hash used for the C\# and CPU implementation. A lot of this method is inspired by a pre-existing implementation found online\cite{sphspatialexample}.
+
+    \begin{algorithm}[H]
+        \caption{\textsc{SpatialHashCPU}}
+    
+        \begin{algorithmic}
+            \ForAll{particles $i$}
+                \State calculate which cell $i$ is in
+                \State find the hash/key for that cell
+                \State update the table
+            \EndFor
+
+            \ForAll{particles $i$}
+                \State find neighbours and store their IDs in $i$.neighbours
+            \EndFor
+        \end{algorithmic}
+    \end{algorithm}
+
+    This method is an improvement as each particle ends up with its own array of neighbours, which is only calculated once at the start of each update loop. This is a huge improvement from before, where each particle calculated its neighbours independently, every update. However, this is at the cost of a lot more storage, as each particle stores their neighbours independently as a vector.
+
+    \subsubsection{Spatial Hash GPU}
+    
+    \newpage
 
     \section{Results and Evaluation}
     \label{sec:resultsandevaluation}
     \subsection{Results}
     \subsection{Evaluation}
+
+    \newpage
 
     \section{Conclusion}
     \label{sec:conclusion}
@@ -758,11 +802,13 @@
     \subsection{Future Work}
 
     \newpage
+
     \section{References}
     \label{sec:references}
     \bibliography{references}
 
     \newpage
+
     \section{Appendices}
     \label{sec:appendices}
 
