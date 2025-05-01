@@ -212,7 +212,7 @@
     
     This simulation excels in visualising fluid interactions, particularly between liquids of varying masses - represented by four distinct colours. You can use the mouse and different keybinds to manipulate the fluid with a range of forces, such as lifting a portion of it up (as shown in figure 3), or creating dynamic collision objects that follow the cursor. It behaves with realistic motion that is driven by gravity and internal pressure and user interaction is only optional.
 
-    Conversely, there is a performance issue with this project. During testing, the simulation peaked at around fifty frames per second. This is completely fine when exploring the fluid in a web browser or for educational demos, but becomes a much larger issue when using it as a video game asset, as video games prefer to be consistently above 60 frames per second - to maintain responsiveness and overall gameplay fluidity. Further optimisations would be required of this simulation in order to utilise it in a video game environment.
+    Conversely, there is a performance issue with this project. During testing, the simulation peaked at around 50 frames per second. This is completely fine when exploring the fluid in a web browser or for educational demos, but becomes a much larger issue when using it as a video game asset, as video games prefer to be consistently above 60 frames per second - to maintain responsiveness and overall gameplay fluidity. Further optimisations would be required of this simulation in order to utilise it in a video game environment.
 
     WebGL simulations, however, work exceptionally in very simple browser games. Here is an example called \textit{Interplanetary Postal Service}\cite{ips}, which was created by Sebastian Macke, for a coding competition with a strict 13KB size limit.
 
@@ -254,7 +254,7 @@
         \caption{\textit{From Dust} Gameplay \cite{fromdustvideo}}
     \end{figure}
 
-    \textit{From Dust}\cite{fromdust} is a god game where the player manipulates matter such as lava, soil and water. In the gameplay video\cite{fromdustvideo}, it is clear that the sand when placed and moved around displaces the water realistically. While the visual quality of the static sea surface may appear simplistic by modern standards, the game's real-time manipulation of large quantities of matter was groundbreaking for its era over thirteen years ago. Albeit impressive visually, there was a lot of computational resources required to run such a large scale simulation. As a result, there was quite a few complaints about the game being capped at thirty frames per second\cite{dsog}, which was very low even back then.
+    \textit{From Dust}\cite{fromdust} is a god game where the player manipulates matter such as lava, soil and water. In the gameplay video\cite{fromdustvideo}, it is clear that the sand when placed and moved around displaces the water realistically. While the visual quality of the static sea surface may appear simplistic by modern standards, the game's real-time manipulation of large quantities of matter was groundbreaking for its era over thirteen years ago. Albeit impressive visually, there was a lot of computational resources required to run such a large scale simulation. As a result, there was quite a few complaints about the game being capped at 30 frames per second\cite{dsog}, which was very low even back then.
     
     \begin{figure}[H]
         \wideimage[]{clairObscur.png}
@@ -726,9 +726,11 @@
 
     This step is straightforward. The particles are confined to a box to prevent the particles from spreading out infinitely. To implement this, a range is defined in all three directions. If the new particle position would exceed this range, it instead becomes the value it is closest to. Then, a small dampening is applied and the velocity direction is flipped. An example implementation can be found in the appendices. To prevent stuttering at the boundaries, it is recommended to calculate the new velocity and position values in temporary variables first, resolve any collisions, and then assign these final values to the particle.
 
-    \subsection{Spawn Particles}
+    \subsection{Spawn and Move Particles}
 
     The following section describes the process taken to render particles in \textit{Unity} using the CPU and the GPU.
+
+    The first step to simulating a fluid using Smoothed Particle Hydrodynamics is to create a grid of particles to represent the fluid. Their properties will be stored in a struct. Each particle struct will contain the following properties: a unique identification number, the current forces being applied to it, velocity, position, density and pressure.
 
     \subsubsection{CPU}
 
@@ -740,27 +742,36 @@
     \begin{figure}[H]
         \begin{center}
             \includegraphics[width=0.5\textwidth]{firstFrameCPU.png}
-            \caption{First frame of the simulation}
+            \caption{First frame of the simulation using prefabs}
         \end{center}
     \end{figure}
 
-    The first step to simulating a fluid using Smoothed Particle Hydrodynamics is to create a grid of particles to represent the fluid. Their properties will be stored in a struct. Each particle struct will contain the following properties: a unique identification number, the current forces being applied to it, velocity, position, density and pressure. For convenience, the game object associated with the particle is initially included in the struct for quick position assignment, which may cause performance issues due to high memory usage when the struct is passed frequently in function calls. In the CPU implementation, the highest number of particles tested was 1000.
+    For convenience, the game object associated with the particle is initially included in the struct for quick position assignment, which may cause performance issues due to high memory usage when the struct is passed frequently in function calls. In the CPU implementation, the highest number of particles tested was 1000.
     
     Next, the particles need to be rendered on to the screen. This is easily done in \textit{Unity} by creating a prefab of the built-in sphere object and instantiating the prefab many times. In order to make the simulation more realistic, a slight variance is added to the particles' starting positions, while maintaining the grid structure. For each instantiation, a particle struct is created and the game object is assigned to it. This struct is then added to a particles array, which contains every particle.
 
-    \subsubsection{Implementation Issues}
-
-    Once the particles were spawned and bouncing due to gravitational forces, the simulation loop described above was written in C\#. See the appendices for methods and calculations. However, the performance and frame rate of the simulation had dropped significantly, to around two frames per second. This is because our current implementation involves each particle comparing itself with every other particle in the simulation. This is an $O(n^2)$ algorithm and is too slow for large particle counts. The first optimisation involves the aforementioned idea that only the particle's neighbours influence it. The number of calculations performed can thus be considerably reduced with spatial hashing.
+    Once the particles were spawned and bouncing due to gravitational forces, the simulation loop described above was written in C\#. See the appendices for methods and calculations. However, the performance and frame rate of the simulation had dropped significantly, to around 2 frames per second.
 
     \subsubsection{GPU}
 
-    In order to render particles using the GPU, a technique called GPU Instancing is used. This is when all the models are rendered simulataneously with a single draw call. Initially, a shader found online was used in this project in order to speed up the process\cite{gpuinstanceshader}. The rendering logic used is from the same repository.
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[width=0.5\textwidth]{firstFrameGPU.png}
+            \caption{First frame of the simulation using GPU instancing}
+        \end{center}
+    \end{figure}
+
+    In order to render particles using the GPU, a technique called GPU Instancing is used. This is when all the models are rendered simulataneously with a single draw call. Initially, a surface shader found online was used in this project in order to speed up the process\cite{gpuinstanceshader}. This is eventually rewritten into a vertex and fragment shader that will be explained later in this paper. The rendering logic used is from the same repository. See the appendices for code snippets. Furthermore, another optimisation to note is that the mesh utilised in this method is not the built in sphere object, but rather a low-poly sphere with a lot less triangles, to further enhance performance.
+
+    With this technique, we use a compute shader and HLSL to perform the calculations. We then redraw the particles in their new positions using another single draw call every update frame. For 1000 particles, the same amount of particles as the CPU implementation, this method achieves over 600 frames per second with the same hardware. However, once we increase the particle count further, performance decreases very quickly, eventually to around 40 frames per second for approximately 32,000 particles.
 
     \subsection{Spatial Hashing}
 
+    The reason the simulation is so slow at this point is because each particle is comparing itself with every other particle in every update step. This is an $O(n^2)$ algorithm and is too slow for large particle counts. The first optimisation involves the aforementioned idea that only the particle's neighbours influence it. The number of calculations performed can thus be considerably reduced with Spatial Hashing.
+
     Spatial Hashing is a technique that divides a space into a hash table. The table contains hashes that correspond to a small section of the space, a cell, and all the items or particles within that cell\cite{spatialpython}. This reduces the number of calculations as only the cell that the particle is in and its neighbouring cells need to be considered for each particle. 
     
-    This algorithm is used at the beginning of each simulation loop. Then, instead of iterating through every particle, each step only needs to go through the neighbour array. There are two slight variants of this method utilised in this project, one for the CPU and one for the GPU.
+    This algorithm is used at the beginning of each simulation loop. Then, instead of iterating through every particle, each process only needs to check the particles in the neighbour array. There are two slight variants of this method utilised in this project, one for the CPU and one for the GPU.
 
     \subsubsection{Spatial Hash CPU}
 
@@ -782,7 +793,7 @@
         \end{algorithmic}
     \end{algorithm}
 
-    This method is an improvement as each particle ends up with its own array of neighbours, which is only calculated once at the start of each update loop. This is a huge improvement from before, where each particle calculated its neighbours independently, every update. However, this is at the cost of a lot more storage, as each particle stores their neighbours independently as a vector.
+    This method is an improvement as each particle ends up with its own array of neighbours, which is only calculated once at the start of each update loop. This is a huge improvement from before, where each particle calculated its neighbours independently, every update. However, this is at the cost of a lot more storage, as each particle stores their neighbours independently as a vector. In regards to performance, the frame rate improves significantly from 2 frames to 40 frames per second on average.
 
     \subsubsection{Spatial Hash GPU}
     
