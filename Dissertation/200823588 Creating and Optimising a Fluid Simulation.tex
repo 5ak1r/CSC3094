@@ -521,7 +521,7 @@
     \begin{algorithm}
         \caption{Simulation Loop}
 
-        \begin{algorithmic}
+        \begin{algorithmic}[1]
             \ForAll{particles $i$}
                 \State calculate density and pressure
             \EndFor
@@ -569,7 +569,7 @@
     \begin{algorithm}[H]
         \caption{\textsc{CalculateDensity}(Particle $p$)}
     
-        \begin{algorithmic}
+        \begin{algorithmic}[1]
             \State total $=$ 0
             
             \ForAll{particles $i$}
@@ -633,7 +633,7 @@
     \begin{algorithm}[H]
         \caption{\textsc{CalculatePressureForce}(Particle $p$)}
     
-        \begin{algorithmic}
+        \begin{algorithmic}[1]
             \State total $\gets$ [0, 0, 0]
             
             \ForAll{particles $i$}
@@ -682,7 +682,7 @@
     \begin{algorithm}[H]
         \caption{\textsc{CalculatePressureAndViscosityForce}(Particle $p$)}
 
-        \begin{algorithmic}
+        \begin{algorithmic}[1]
             \State totalPressure $\gets$ [0, 0, 0]
             \State totalViscosity $\gets$ [0, 0, 0]
 
@@ -713,7 +713,7 @@
     \begin{algorithm}[H]
         \caption{\textsc{MoveParticle}}
     
-        \begin{algorithmic}
+        \begin{algorithmic}[1]
             \ForAll{particles $i$}
                 \State $i$.velocity += $i$.force / particleMass * deltaTime
                 \State $i$.position += $i$.velocity * deltaTime
@@ -778,25 +778,223 @@
     This section describes the processes involved in the spatial hash used for the C\# and CPU implementation. A lot of this method is inspired by a pre-existing implementation found online\cite{sphspatialexample}.
 
     \begin{algorithm}[H]
-        \caption{\textsc{SpatialHashCPU}}
+        \caption{\textsc{PartialSpatialHashCPU}}
     
-        \begin{algorithmic}
+        \begin{algorithmic}[1]
             \ForAll{particles $i$}
                 \State calculate which cell $i$ is in
                 \State find the hash/key for that cell
+            \EndFor
+            \ForAll{particles $i$}
                 \State update the table
             \EndFor
-
             \ForAll{particles $i$}
                 \State find neighbours and store their IDs in $i$.neighbours
             \EndFor
         \end{algorithmic}
     \end{algorithm}
 
-    This method is an improvement as each particle ends up with its own array of neighbours, which is only calculated once at the start of each update loop. This is a huge improvement from before, where each particle calculated its neighbours independently, every update. However, this is at the cost of a lot more storage, as each particle stores their neighbours independently as a vector. In regards to performance, the frame rate improves significantly from 2 frames to 40 frames per second on average.
+    This method is an improvement as each particle ends up with its own array of neighbours, which is only calculated once at the start of each update loop. The neighbours are stored in a vector within the particle struct and is unique to each particle. This is a huge improvement from before, where each particle calculated its neighbours independently, every update. However, this is at the cost of a lot more storage, as each particle stores their neighbours independently and can introduce repeated data. In regards to performance, the frame rate improves significantly from 2 frames to 40 frames per second on average with 1000 particles still.
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[width=0.5\textwidth]{neighboursCPU.png}
+            \caption{Visualisation of neighbour array for pink particle}
+        \end{center}
+    \end{figure}
+
+    There are still issues with larger particle counts in this implementation due to large memory consumption and the multiple draw calls. In Figure 20, this method was tested with 8000 particles, but the frame rate averaged around 0.5 frames per second. Due to this, the decision was made to move the calculations to the GPU and no further work was completed on this version.
 
     \subsubsection{Spatial Hash GPU}
     
+    The algorithm used for the GPU is more complete. It was a lot easier to debug and improve this version due to the increased performance of the particle rendering. This implementation is created with the aid of multiple online resources\cite{lague}\cite{sphspatialexample}\cite{bitonicyt}\cite{bitonicparallel}.
+
+    \begin{algorithm}
+        \caption{SpatialHashGPU}
+        \begin{algorithmic}[1]
+            \ForAll{particles $i$}
+                \State calculate which cell $i$ is in
+                \State find the hash key for that cell
+            \EndFor
+            \ForAll{particles $i$}
+                \State sort the particles by hash key
+            \EndFor
+            \ForAll{particles $i$}
+                \State update the lookup table
+            \EndFor
+        \end{algorithmic}
+    \end{algorithm}
+
+    This version differs from the incomplete implementation described above in that it avoids storing a vector of neighbors within each particle structure. Instead, it employs a more efficient approach using a single lookup table. After computing hash keys for all particles, the array of particles is sorted based on these keys. The lookup table then stores the starting index in the sorted array for each unique hash key, allowing for quick access to particles in the same spatial cell. This reduces memory overhead and improves cache coherence. Figure 21 provides a visual explanation of this method created by Sebastial Lague\cite{lague}.
+    
+    \begin{figure}[H]
+        \wideimage[]{spatialHashVisualisation.png}
+        \caption{Spatial Hash Visualisation \cite{lague}}
+    \end{figure}
+
+    \subsubsection{Cell Calculation}
+
+    The following sections will explain how to implement each step of the algorithm. The code snippets are all in HLSL.
+
+    The space that the particle can occupy (the volume within the bounds of the box) is divided into cells with dimensions equal to a value greater than or equal to the smoothing radius of the particles. This is to guarantee that any neighbouring particles that will provide an influence on this position is either within the same cell or in directly adjacent cells. The simplest way to do this is to divide the current position of the particle by the smoothing radius and return either the floor or ceiling of this - so cells within the same cell have the same cell coordinate.
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[]{findCell.png}
+            \caption{FindCell HLSL}
+        \end{center}
+    \end{figure}
+
+    \subsubsection{Hash Key Calculation}
+
+    The cell coordinates produced are integer vectors with three entries. This is inefficient for memory and inconvenient for fast lookups; one integer comparison is better than three. In order to convert these vectors into a single integer with minimal overlap, each integer is multiplied by a large hash value and the results are combined using the bitwise XOR operation. Then the hash value is wrapped around the length of the array so that it can be used as an index.
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[]{findHash.png}
+            \caption{FindHash HLSL}
+        \end{center}
+    \end{figure}
+
+    \subsubsection{Storing the Hash Keys}
+
+    As these are inline methods, a function that will perform these operations and then store the obtained values in an array needs to be defined. The array begins unsorted with each index being equal to the particle's unique ID. The thread group size attribute is declared at the top of the method. In this implementation, there are 256 threads in each thread group. This means that 256 threads will be launched and use shared resources simulataneously. A power of two is chosen here due to the nature of the sorting algorithm that is used in the next step.
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[]{hashParticles.png}
+            \caption{HashParticles HLSL}
+        \end{center}
+    \end{figure}
+
+    \subsubsection{Bitonic Sort}
+    
+    \paragraph{Bitonic Sequence} ``A data-set is bitonic if there exists an index i for which all elements less than or equal to i are in increasing order, and all elements greater than or equal to i are in decreasing order'' \cite{bitonicyt}.
+
+    Something to note is that this definition is valid for sequences that are also entirely increasing or entirely decreasing. As a result, any collection of numbers can be split into a series of bitonic sequences by reducing it down into smaller lists of length 2. This sorting algorithm therefore does not work on lists with a length that is not equal to a power of 2, hence why a thread group of size 256 is used.
+
+    \paragraph{Bitonic Sort} ``A comparison-based sorting algorithm which sorts a data-set by converting the list of numbers into a bitonic sequence. The list is then sorted using a merge function'' \cite{bitonicyt}.
+
+    The pseudocode will be presented below, with the following variables
+    \begin{itemize}
+        \item arr = the data-set being sorted
+        \item lowIndex = the lowest index of the array or sub-array
+        \item count = the number of elements in the array or sub-array
+        \item direction = whether the bitonic sequence should be increasing or decreasing, 1 = increasing and 0 = decreasing
+    \end{itemize}
+
+    \begin{algorithm}
+        \caption{BitonicMerge(arr, lowIndex, count, direction)}
+        \begin{algorithmic}[1]
+            \If {count $>$ 1}
+                \State set k = count / 2
+                \For {(i = lowIndex; i $<$= lowIndex + k; i++)}
+                    \If {direction == (arr[i] $>$ arr[i+k])}
+                        \State swap arr[i] and arr[i+k]
+                    \EndIf
+                \EndFor
+                \State \textsc{BitonicMerge}(arr, lowIndex, k, direction)
+                \State \textsc{BitonicMerge}(arr, lowIndex + k, k, direction)
+            \EndIf
+        \end{algorithmic}
+    \end{algorithm}
+
+    \begin{algorithm}
+        \caption{BitonicSort(arr, lowIndex, count, direction)}
+        \begin{algorithmic}[1]
+            \If {count $>$ 1}
+                \State set k = count / 2
+                \State \textsc{BitonicSort}(arr, lowIndex, k, 1)
+                \State \textsc{BitonicSort}(arr, lowIndex + k, k, 0)
+                \State \textsc{BitonicMerge}(arr, lowIndex, count, direction)
+            \EndIf
+        \end{algorithmic}
+    \end{algorithm}
+
+    The reason that a Bitonic Sort is chosen as our sorting algorithm is because it is a parallel algorithm. This means that multiple operations required in the algorithm can be computed simulataneously. For example, the sequential recusive \textsc{BitonicSort} and \textsc{BitonicMerge} calls do not depend on each other and can therefore be computed in parallel. This is perfect for a GPU based implementation as parallelisation can occur through threading.
+
+    This paper adopts a parallelised version of the Bitonic Sort found in a YouTube tutorial online\cite{bitonicparallel}.
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=\textwidth]{bitonicSortCSharp.png}
+            \caption{C\# parallelisation}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.9\textwidth]{bitonicSortCompute.png}
+            \caption{Bitonic Sort computation HLSL}
+        \end{center}
+    \end{figure}
+
+    \subsubsection{Update Lookup Table}
+
+    Now that the particles have been sorted according to their hash key values, the lookup table needs to be updated with the changes.
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[]{updateLookup.png}
+            \caption{FillLookupTable HLSL}
+        \end{center}
+    \end{figure}
+
+    This method iterates through every particle and finds which cell it is in. Then it compares the index of the particle with the starting index currently stored in the table. If this is the first particle in this cell, the value of $\_lookupTable[cellIndex]$ will be an incredibly large number, otherwise it'll be the index of the first particle in that cell. Therefore, when $\textsc{InterlockedMin}(\_lookupTable[cellIndex], id.x)$ is called, if this is the first particle of the cell, its index will be lower than the large default number and will replace this value, otherwise it will remain unchanged.
+
+    \subsubsection{Using the Spatial Hash}
+
+    Once the spatial hash has been implemented, it needs to be integrated into the simulation loop.
+
+    \begin{algorithm}[H]
+        \caption{Simulation Loop With Spatial Hashing}
+
+        \begin{algorithmic}[1]
+
+            \State reset lookup table
+
+            \ForAll{particles $i$}
+                \State calculate the cell its hash key
+            \EndFor
+
+            \State \textsc{SortParticles}()
+            
+            \ForAll{particles $i$}
+                \State update lookup table
+            \EndFor
+
+            \ForAll{particles $i$}
+                \State calculate density and pressure
+            \EndFor
+
+            \ForAll{particles $i$}
+                \State compute forces
+            \EndFor
+
+            \ForAll{particles $i$}
+                \State update velocity and position
+                \State resolve collisions
+            \EndFor
+        \end{algorithmic}
+
+    \end{algorithm}
+
+    By eliminating non-neighboring particles and using a lookup table to store previously computed comparisons, the algorithm's complexity is reduced to $O(n)$ complexity. The worst case scenario is still $O(n^2)$ (if all the particles are within the same cell or neighbouring cells), but this should never be the case due to the forces they exert on each other. 
+
+    With these changes, the simulation achieved frame rates ranging between 250 and 320 for approximately 32,000 particles, a huge improvement to the 40 frames before.
+
+    \subsection{More Forces}
+
+    Two additional forces have not been implemented thus far due to the challenges associated with debugging, stemming from suboptimal optimization. This is no longer an issue thanks to the spatial hash. This section describes their implementations.
+
+    \subsubsection{Surface Tension}
+
+    This section describes an integration of surface tension also given by the aforementioned paper\cite{sca}.
+
+    Molecules in a fluid experience attractive forces from their neighbours. When they are surrounded by neighbours in all directions (when they are not at the surface), these forces are equal in all directions; the net force is \textbf{0}. They are unbalanced at the surface of the fluid and act in the direction of the surface normal towards the fluid. The effect of this force depends on the two fluids present at the surface (for example water and air), resulting in a tension coefficient $\sigma$.
+
+    RESUME HERE!!!
+
     \newpage
 
     \section{Results and Evaluation}
