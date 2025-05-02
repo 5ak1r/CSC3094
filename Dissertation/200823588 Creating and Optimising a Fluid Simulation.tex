@@ -261,7 +261,7 @@
         \caption{A screenshot of water blocked by an invisible wall in Clair Obscur: Expedition 33}
     \end{figure}
 
-    Even nowadays there are a lot of video games that don't utilise realistic fluid flows because of their high computational resource requirement. An example of this is with a game that released just this month, \textit{Clair Obscur: Expedition 33}\cite{clairobscur}.
+    Even nowadays there are a lot of video games that don't utilise realistic fluid flows because of their high computational resource requirement. An example of this is a game that released just this month, \textit{Clair Obscur: Expedition 33}\cite{clairobscur}.
     While the simulation is visually stunning, it is not possible to interact with the water. There is a loss of immersion here, especially considering the position of this water. It is located at the end of the prologue, after the character has left the island they have resided on their entire life to explore the abandoned mainland. The character, having never before set foot beyond their home, should be experiencing a profound sense of unfamiliarity due to a heavy environment change. The static and artificial appearance of the river diminishes this intended narrative impact, disconnecting the character from the player.
 
     \begin{figure}[H]
@@ -645,7 +645,7 @@
                 \EndIf
 
                 \State direction $\gets$ offset $/$ distance
-                \State total $-=$ ($p$.pressure $+\ i$.pressure) $*$ 0.5 $*$ \textsc{SpikyGradient}(distance, direction)
+                \State total $-=$ ($p$.pressure $+\ i$.pressure) $/$ (2 * $i$.density) $*$ \textsc{SpikyGradient}(distance, direction)
             \EndFor
 
             \Return total $*$ particleMass
@@ -695,12 +695,12 @@
                 \EndIf
 
                 \State direction $\gets$ offset $/$ distance
-                \State totalPressure $-=$ ($p$.pressure $+\ i$.pressure) $*$ 0.5 $*$ \textsc{SpikyGradient}(distance, direction)
+                \State totalPressure $-=$ ($p$.pressure $+\ i$.pressure) $/$ (2 * $i$.density) $*$ \textsc{SpikyGradient}(distance, direction)
                 \State totalViscosity += \textsc{ViscosityLaplacian}(distance) *
                 \Statex \hspace{\algorithmicindent} ($i$.velocity $-\ p$.velocity) / $i$.density
             \EndFor
             
-            $p$.force = particleMass * (totalPressure + totalViscosity)
+            \State $p$.force = particleMass * (totalPressure + totalViscosity)
         \end{algorithmic}
 
     \end{algorithm}
@@ -944,7 +944,7 @@
 
     \subsubsection{Using the Spatial Hash}
 
-    Once the spatial hash has been implemented, it needs to be integrated into the simulation loop.
+    Once the spatial hash has been implemented, it needs to be integrated into the simulation loop. Note that finding the neighbour-finding logic is moved into the calculation methods.
 
     \begin{algorithm}[H]
         \caption{Simulation Loop With Spatial Hashing}
@@ -954,7 +954,7 @@
             \State reset lookup table
 
             \ForAll{particles $i$}
-                \State calculate the cell its hash key
+                \State calculate the cell and its hash key
             \EndFor
 
             \State \textsc{SortParticles}()
@@ -991,9 +991,158 @@
 
     This section describes an integration of surface tension also given by the aforementioned paper\cite{sca}.
 
-    Molecules in a fluid experience attractive forces from their neighbours. When they are surrounded by neighbours in all directions (when they are not at the surface), these forces are equal in all directions; the net force is \textbf{0}. They are unbalanced at the surface of the fluid and act in the direction of the surface normal towards the fluid. The effect of this force depends on the two fluids present at the surface (for example water and air), resulting in a tension coefficient $\sigma$.
+    Molecules in a fluid experience attractive forces from their neighbours. When they are surrounded by neighbours in all directions (when they are not at the surface), these forces are equal in all directions; the net force is \textbf{0}. They are unbalanced at the surface and act in the direction of the surface normal towards the fluid. The effect of this force depends on the two fluids present at the surface (for example water and air), resulting in a tension coefficient $\sigma$.
 
-    RESUME HERE!!!
+    To find which particles are on the surface of the fluid, we use the generalised property equation to produce a colour field. The field is 1 in locations a particle is present and 0 otherwise.
+
+    \begin{equation}
+        c_S(\textbf{r}) = \sum_{j}{m_j \frac{1}{\rho_j}W(\textbf{r} - \textbf{r}_j, h)}
+    \end{equation}
+
+    The smoothing kernel used in these calculations is the previously mentioned Poly6 kernel. The gradient of this colour field is denoted as \textbf{n}, and it represents the surface normal field pointing into the fluid. Its divergence $\nabla \cdot \textbf{n} \equiv \nabla^2 c_S$ measures the curvature of the surface. To obtain these two values, the gradient and Laplacian of the Poly6 kernel are required. Their derivations can be found in the appendices.
+
+    \begin{equation}
+        \nabla W_{poly6}(\textbf{r}, h) = \frac{315}{63\pi{h}^9}
+        \begin{cases}
+            -6(h^2-r^2)^2\textbf{r} & 0 \leq r \leq h \\
+            0 & otherwise
+        \end{cases}
+    \end{equation}
+
+    \begin{equation}
+        \nabla^2 W_{poly6}(\textbf{r}, h) = \frac{315}{63\pi{h}^9}
+        \begin{cases}
+            -6(3h^4 - 10h^2r^2 + 7r^4) & 0 \leq r \leq h \\
+            0 & otherwise
+        \end{cases}
+    \end{equation}
+    
+    The direction is reversed by taking the negative as the force is trying to flatten the surface.
+
+    \begin{equation}
+        \kappa = \frac{-\nabla^2 c_S}{\left|\textbf{n}\right|}
+    \end{equation}
+
+    Putting this all together, the following surface force calculation is derived
+
+    \begin{equation}
+        \textbf{f}^{surface}_{i} = \sigma \kappa \textbf{n} = -\sigma \nabla^2 c_S(\textbf{r}_i)\frac{\textbf{n}}{\left|\textbf{n}\right|}
+    \end{equation}
+
+    There arises a numerical issue when $\left|\textbf{n}\right|$ is too small. To fix this, a threshold is predetermined; the calculations are only considered if this value is greater than the threshold. Similar to the viscosity force, these force calculations can be performed in the same loop as the pressure force.
+
+    \begin{algorithm}[H]
+        \caption{\textsc{CalculateForces}(Particle $p$)}
+
+        \begin{algorithmic}[1]
+            \State totalPressure $\gets$ [0, 0, 0]
+            \State totalViscosity $\gets$ [0, 0, 0]
+
+            \State surfaceForce $\gets$ [0, 0, 0]
+            \State colorFieldGradient $\gets$ [0, 0, 0]
+            \State coloeFieldLaplacian = 0
+
+            \ForAll{neighbour particles $i$}
+                \State offset $\gets$ $p$.position $-\ i$.position
+                \State distance $=$ \textsc{magnitude}(offset)
+
+                \If{distance $<$ epsilon}
+                    continue
+                \EndIf
+
+                \State direction $\gets$ offset $/$ distance
+                \State totalPressure $-=$ ($p$.pressure $+\ i$.pressure) $/$ (2 * $i$.density) $*$ \textsc{SpikyGradient}(distance, direction)
+                \State totalViscosity += \textsc{ViscosityLaplacian}(distance) *
+                \Statex \hspace{\algorithmicindent} ($i$.velocity $-\ p$.velocity) / $i$.density
+                \State colorFieldGradient += \textsc{Poly6Gradient}(distance, direction) \Statex \hspace{\algorithmicindent} $/$ $i$.density
+                \State colorFieldLaplacian += \textsc{Poly6Laplacian}(distance) $/$ $i$.density
+            \EndFor
+
+            \State colorFieldGradient *= particleMass
+            \State colorFieldLaplacian *= particleMass
+
+            \State colorFieldGradientLength = \textsc{length}(colorFieldGradient)
+
+            \If {colorFieldGradientLength $>$ threshold}
+                \State curvature = -colorFieldLaplacian / colorFieldGradientLength
+                \State surfaceForce = -tensionCoefficient * curvature \Statex \hspace{\algorithmicindent} * \textsc{normalize}(colorFieldGradient)
+            \EndIf
+
+            \State $p$.force = particleMass * (totalPressure + totalViscosity) + surfaceForce
+        \end{algorithmic}
+
+    \end{algorithm}
+
+    \subsubsection{External Forces}
+
+    Although gravity has already been applied, the fluid should be pushed away and interact with objects within the simulation. If the object comes into contact with the particle, it should push the particle in the opposite direction. In this simulation, a single sphere game object was added to the scene; moving it into the box pushes the fluid away. See the appendices for the implementation.
+
+    \subsubsection{Performance}
+
+    These additional calculations have little impact on the overall frame rate of the simulation, it consistently remains within the 250 to 320 frame rate described beforehand for approximately 32,000 particles.
+
+    \subsection{Circles}
+
+    It was at this point that the rendering shader was rewritten. Thanks to the \textit{OpenGL} learned at the beginning, it was possible to rewrite the Surface shader into a Vertex and Fragment shader. See the appendices for the new shader code. The reason for for this was to change the mesh that was being rendered. 
+    
+    Previously, a low-poly sphere was being used, consisting of 60 triangles. Instead of a 3D mesh, a quad may be utilised instead, which consists of only 2 triangles. In order to maintain the 3D appearance, the vertex shader was rewritten to ensure that the meshes were constantly facing the camera. This was done using a tutorial found online\cite{lague2}.
+
+    The snippet below positions a quad in world space and orients it to always face the camera by performing the following steps:
+    \begin{itemize}
+        \item Start with the quad's world position as the centre
+        \item Scale the vertex coordinates to determine visual dimensions
+        \item Extract the camera's right and up directions; the x and y axes in world space
+        \item Offset the quad's vertices using these vectors, making sure the quad remains perpendicular to the camera's forward direction
+    \end{itemize}
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[]{cameraLogic.png}
+            \caption{Camera Logic Vertex Shader \cite{lague2}}
+        \end{center}
+    \end{figure}
+
+    In order to maintain a spherical appearance, the corners of the quad need to be discarded. This is done by the Fragment Shader:
+    
+    \begin{itemize}
+        \item Shift the UV coordinates so that the quad's centre is (0,0)
+        \item Scale the coordinates to range between -1 and 1
+        \item Compute the squared distance from the centre using the dot product $x^2 + y^2$
+        \item Discards the fragment if this value is greater than 1 (the circle's radius)
+    \end{itemize}
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[]{circleLogic.png}
+            \caption{Circle Logic Fragment Shader \cite{lague2}}
+        \end{center}
+    \end{figure}
+
+    For any fragments not discarded, the colour of the circle is set based on the particle's velocity. A rainbow gradient was chosen for the purposes of the demonstration but is easily adjustable due to the formula used\cite{colours}.
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[]{paletteHelper.png}
+            \caption{Colour Palette Formula \cite{colours}}
+        \end{center}
+    \end{figure}
+
+    The rainbow gradient is achieved with the following values:
+    \begin{itemize}
+        \item a = $(0.50, 0.50, 0.50)$
+        \item b = $(0.50, 0.50, 0.50)$
+        \item c = $(1.00, 1.00, 1.00)$
+        \item d = $(0.00, 0.33, 0.67)$
+    \end{itemize}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.5\textwidth]{finalAppearance.png}
+            \caption{Rainbow gradient and circle particles}
+        \end{center}
+    \end{figure}
+
+    With this optimisation, the simulation's frame rate improved from 320 frames to around 400 frames with approximately 40,000 particles. This was the final product created in this paper.
 
     \newpage
 
@@ -1046,12 +1195,16 @@
 
     \begin{proof}
         Spherical Gradient is defined as
+
         $$\nabla f = \frac{\partial{f}}{\partial{r}}\textbf{e}_r + \frac{1}{r}\frac{\partial{f}}{\partial{\theta}}\textbf{e}_{\theta} + \frac{1}{r \sin{\theta}}\frac{\partial{f}}{\partial{\phi}}\textbf{e}_{\phi}$$
+        
         where $\textbf{e}_{r}, \textbf{e}_{\theta}, \textbf{e}_{\phi}$ are the unit direction vectors in the radial, polar and azimuthal directions respectively.
 
-        Due to the radial symmetry of smoothing kernels, this is simplified to just $$\nabla f = \frac{\partial{f}}{\partial{r}}\textbf{e}_r$$
+        Due to the radial symmetry of smoothing kernels, this is simplified to
 
-        $$\nabla W_{spiky}(r, h) = \frac{\partial{W}}{\partial{r}} \cdot \frac{\textbf{r}}{r}$$
+        $$\nabla f = \frac{\partial{f}}{\partial{r}}\textbf{e}_r$$
+
+        $$\nabla W_{spiky}(\textbf{r}, h) = \frac{\partial{W}}{\partial{r}} \cdot \frac{\textbf{r}}{r}$$
 
         $$\frac{\partial{W}}{\partial{r}} = \frac{15}{\pi{h}^6} \cdot \frac{\partial}{\partial{r}} (h - r)^3$$
 
@@ -1061,7 +1214,89 @@
 
         Therefore
 
-        $$\nabla{W_{spiky}(r, h)} = \frac{15}{\pi{h}^6} \cdot -3(h - r)^2 \cdot \frac{\textbf{r}}{r} = \frac{-45}{\pi{h}^6}(h - r)^2 \cdot \frac{\textbf{r}}{r}$$
+        $$\nabla{W_{spiky}(\textbf{r}, h)} = \frac{15}{\pi{h}^6} \cdot -3(h - r)^2 \cdot \frac{\textbf{r}}{r} = \frac{-45}{\pi{h}^6}\begin{cases}
+            (h - r)^2 \cdot \frac{\textbf{r}}{r} & 0 \leq r \leq h \\
+            0 & otherwise
+        \end{cases}$$
     \end{proof}
 
+    \subsubsection{Poly6 Gradient}
+
+    \begin{proof}
+        Using the spherical gradient from $7.3.1$
+
+        $$\nabla W_{poly6}(r, h) = \frac{\partial{W}}{\partial{r}} \cdot \frac{\textbf{r}}{r}$$
+
+        $$\frac{\partial{W}}{\partial{r}} = \frac{315}{64\pi{h}^9} \cdot \frac{\partial}{\partial{r}} (h^2 - r^2)^3$$
+
+        Applying the chain rule
+
+        $$\frac{\partial}{\partial{r}} (h^2 - r^2)^3 = 3 \cdot (h^2 - r^2)^2 \cdot (-2r) = 6r(h^2 - r^2)^2$$
+
+        Therefore
+
+        $$\nabla W_{poly6}(\textbf{r}, h) = \frac{315}{64\pi{h}^9} \cdot 6(h^2 - r^2)^2 \cdot r \cdot \frac{\textbf{r}}{r} = \frac{315}{64\pi{h}^9}
+        \begin{cases}
+            6(h^2 - r^2)^2 \cdot \textbf{r} & 0 \leq r \leq h \\
+            0 & otherwise
+        \end{cases}$$
+    \end{proof}
+
+    \subsubsection{Poly6 Laplacian}
+
+    \begin{proof}
+        Spherical Laplacian is defined as
+
+        $$\nabla^2 f = \frac{1}{r^2}\frac{\partial}{\partial{r}}\left(r^2\frac{\partial{f}}{\partial{r}}\right) + \frac{1}{r^2\sin\theta}\frac{\partial}{\partial{\theta}}\left(\sin\theta\frac{\partial{f}}{\partial{\theta}}\right) + \frac{1}{r^2\sin^2\theta}\left(\frac{\partial^2{f}}{\partial{\phi^2}}\right)$$
+
+        Due to the radial symmetry of the kernel functions, this is simplified to
+
+        $$\nabla^2 f = \frac{1}{r^2}\frac{\partial}{\partial{r}}\left(r^2\frac{\partial{f}}{\partial{r}}\right)$$
+        
+        Using the chain rule
+
+        $$\frac{\partial}{\partial{r}}\left(r^2\frac{\partial{f}}{\partial{r}}\right) = 2r \cdot \frac{\partial{f}}{\partial{r}} + r^2 \cdot \frac{\partial^2{f}}{\partial{r^2}}$$
+
+        $$\frac{1}{r^2} \left(2r \cdot \frac{\partial{f}}{\partial{r}} + r^2 \cdot \frac{\partial^2{f}}{\partial{r^2}}\right) = \frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}}$$
+
+        Therefore
+
+        $$\nabla^2 W(\textbf{r}, h) = {2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}}$$
+
+        Using the result from $7.3.2$, let $C = \frac{315}{64\pi{h}^9}$
+
+        $$\frac{\partial{W}^2}{\partial{r^2}} = \frac{\partial}{\partial{r}} \left(-6C(h^2 - r^2)^2r\right)$$
+
+        Using the chain rule
+
+        $$\frac{\partial{W}^2}{\partial{r^2}} = -6C \cdot (1) \cdot (h^2 - r^2)^2 \cdot (-2r) \cdot 2(h^2-r^2)$$
+
+        $$\frac{\partial{W}^2}{\partial{r^2}} = -6C \cdot (h^2 - r^2)^2 \cdot \left[\left(h^2 - r^2\right) - 4r^2\right]$$
+
+        Combining these results
+
+        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = \frac{2}{r} \cdot -6C \cdot r(h^2 - r^2)^2 \cdot -6C \cdot (h^2 - r^2) \cdot \left[\left(h^2 - r^2\right) - 4r^2\right]$$
+
+        Factor out $-6C \cdot (h^2 - r^2)$ and simplify the fraction
+
+        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (h^2 - r^2) \left[(h^2 - r^2) - 4r^2 + 2(h^2 - r^2)\right]$$
+
+        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (h^2 - r^2) \left[(3(h^2 - r^2) - 4r^2\right]$$
+
+        $$\left[(3(h^2 - r^2) - - 4r^2\right] = 3h^2 - 7r^2$$
+
+        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (h^2 - r^2) \cdot (3h^2 - 7r^2)$$
+
+        Expand the brackets
+
+        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (3h^4 - 10h^2r^2 + 7r^4)$$
+
+        Therefore
+
+        $$\nabla^2 W(\textbf{r}, h) = \frac{315}{64\pi{h}^9}
+        \begin{cases}
+            -6(3h^4 - 10h^2r^2 + 7r^4) & 0 \leq r \leq h \\
+            0 & otherwise
+        \end{cases}$$
+    \end{proof}
 \end{document}
