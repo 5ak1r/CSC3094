@@ -205,8 +205,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.121281795, y: 0.081885554, z: -0.010051018, w: -0.9891837}
-  m_LocalPosition: {x: 4.677004, y: 2.5801454, z: -3.0986843}
+  m_LocalRotation: {x: -0.022952365, y: -0.06334796, z: 0.0014411682, w: -0.99772656}
+  m_LocalPosition: {x: 2.3312707, y: 3.139068, z: -7.6639175}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -510,7 +510,7 @@ MonoBehaviour:
   collisionForce: 1000
   rowCount: {x: 32, y: 32, z: 32}
   epsilon: 0.00001
-  deltaTime: 0.003
+  deltaTime: 0
   particleRadius: 0.2
   boxDimensions: {x: 4, y: 10, z: 3}
   spawnPoint: {x: 1, y: 1, z: 1}
