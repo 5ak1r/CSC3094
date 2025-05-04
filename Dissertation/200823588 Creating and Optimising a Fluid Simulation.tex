@@ -796,7 +796,7 @@
 
     In order to render particles using the GPU, a technique called GPU Instancing is used. This is when all the models are rendered simulataneously with a single draw call. Initially, a surface shader found online was used in this project in order to speed up the process\cite{gpuinstanceshader}. This is eventually rewritten into a vertex and fragment shader that will be explained later in this paper. The rendering logic used is from the same repository. See the appendices for code snippets. Furthermore, another optimisation to note is that the mesh utilised in this method is not the built in sphere object, but rather a low-poly sphere with a lot less triangles, to further enhance performance.
 
-    With this technique, we use a compute shader and HLSL to perform the calculations. We then redraw the particles in their new positions using another single draw call every update frame. For 1000 particles, the same amount of particles as the CPU implementation, this method achieves over 600 frames per second with the same hardware. However, once we increase the particle count further, performance decreases very quickly, eventually to around 40 frames per second for approximately 32,000 particles.
+    With this technique, we use a compute shader and HLSL to perform the calculations. We then redraw the particles in their new positions using another single draw call every update frame. For 1000 particles, the same amount of particles as the CPU implementation, this method achieves over 600 frames per second with the same hardware. Furthermore, once we increase the particle count further, performance remains high, maintaining over 500 frames per second for approximately 32,000 particles.
 
     \subsection{Spatial Hashing}
 
@@ -1229,6 +1229,12 @@
 
     The combination of these issues and the limited time frame contributed to the decision of abandoning this second implementation and continuing to a fully GPU-based implementation within Unity, though the initial programming required to produce this was beneficial in simplifying and speeding up the GPU implementation process.
 
+
+    \subsection{Unity GPU Simulation}
+    
+    The final simulation produced in this project was a GPU-based implementation with \textit{HLSL} and Compute Shaders with \textit{Unity}. When this version reached the same development point as the OpenGL implementation - a grid of particles affected by gravitational forces - it also achieved very high frame rates, averaging around 600 frames per second for 1,000 particles. When the physics was applied, the frame rate decreased to around 300 frames per second for 1,000 particles and less than 100 for 32,000 particles. Integrating the spatial hash algorithm into this simulation improved the average frame rate, achieving results between 250 to 320 frames per second for 32,000 particles. Manually precomputing and setting constant values into the simulation further improved the frame rate, to around 280-340 frames per second due to the significant reduction in the number of calculations performed. Finally, making the particles 2D circles that maintain their 3D appearance improved the overall frame rate even further to around 400 frames for 32,000 particles. This frame rate is maintained for higher particles counts but the simulation begins to 
+    
+    
     \newpage
 
     \section{Conclusion}
