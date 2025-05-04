@@ -11,6 +11,8 @@
 \usepackage{xcolor}
 \usepackage{algorithm}
 \usepackage{algpseudocodex}
+\usepackage{enumitem}
+
 
 \lstdefinelanguage{glsl}{
     keywords = {if, else, continue, break, for, mat4, vec4, vec3, vec2, return, true, false, bool, int, float, void, char, sampler2D, struct, discard, in, out, layout, version, uniform},
@@ -50,7 +52,7 @@
 
 \title
 {
-    {\Huge Creating and Optimising a Fluid Simulation using Smoothed Particle Hydrodynamics} \\
+    {\Huge Creating and Optimising a Fluid Simulation For Use in Video Games} \\
     \vspace*{1cm}
     {\LARGE BSc Computer Science}
 }
@@ -298,7 +300,7 @@
 
     \subsubsection{OpenGL vs. Vulkan}
 
-    As a graphics API was decided, the next choice was between \textit{OpenGL} and \textit{Vulkan}. \textit{DirectX} was not considered due to its lack of cross-platform compatability, as it was specifically designed for \textit{Windows} and \textit{XBox}. This was a relatively simple decision, as \textit{OpenGL} is considered the beginner option, and \textit{Vulkan} is not recommended for new graphics programmers by Alexander Overvoorde, the writer of \textit{Vulkan Tutorial}: ``Vulkan is targeted at experienced graphics programmers. You should start with an easier language than C++ and an easier API than Vulkan'' \cite{vulkancomment}. Although \textit{Vulkan} is a better choice for future-proofing (as \textit{OpenGL} is no longer receiving updates), this reasoning was not significant justification; the project can be rewritten in the future with more time and experience. Thus, \textit{OpenGL} was selected, accompanied by the C++ language due to previous experience with the language.
+    As a graphics API was decided, the next choice was between \textit{OpenGL} and \textit{Vulkan}. \textit{DirectX} was not considered due to its lack of cross-platform compatability, as it was specifically designed for \textit{Windows} and \textit{XBox}. This was a relatively simple decision, as \textit{OpenGL} is considered the beginner option, and \textit{Vulkan} is not recommended for new graphics programmers by Alexander Overvoorde, the writer of \textit{Vulkan Tutorial}: ``Vulkan is targeted at experienced graphics programmers. You should start with an easier language than \textit{C++} and an easier API than Vulkan'' \cite{vulkancomment}. Although \textit{Vulkan} is a better choice for future-proofing (as \textit{OpenGL} is no longer receiving updates), this reasoning was not significant justification; the project can be rewritten in the future with more time and experience. Thus, \textit{OpenGL} was selected, accompanied by the \textit{C++} language due to previous experience with the language.
     
     \subsection{Fluid Simulation methods}
 
@@ -411,6 +413,34 @@
 
     \newpage
 
+    \subsection{Requirements}
+
+    Using the background research, a set of functional and non-functional requirements may be produced.
+
+    \subsubsection{Functional Requirements}
+
+    \begin{enumerate}[label=\textbf{F.R. \arabic*}]
+        \item The fluid will be rendered with particles that represent parcels of fluid.
+        \item The simulation will accurately model fluid behaviour, including properties such as viscosity, density and pressure.
+        \item The fluid will be affected by gravitational forces.
+        \item The fluid will remain within a box, which has adjustable dimensions.
+        \item The user can manipulate the fluid by dragging an object through it.
+    \end{enumerate}
+
+    \subsubsection{Non-Functional Requirements}
+
+    \begin{enumerate}[label=\textbf{N.F.R. \arabic*}]
+        \item The simulation will run at a high frame rate to ensure smooth gameplay.
+        \item There will be attempts to reduce the overall memory consumption of the simulation.
+        \item The simulation will be stable with minimal bugs or crashes.
+        \item The simulation will remain stable and flow accurately with no stuttering or jumping.
+        \item The simulation will run in real time, with adjustable properties that also update in real time.
+        \item The simulation will be modular; new fluid types and behaviours can be added in the future with ease.
+        \item The simulation should work seamlessly within a larger project.
+    \end{enumerate}
+
+    \newpage
+
     \section{What Was Done and How}
     \label{sec:whatwasdoneandhow}
 
@@ -512,7 +542,7 @@
         \end{center}
     \end{figure}
     
-    Learning the theory behind the graphics rendering pipeline and OpenGL took longer than anticipated. It was at this point that the decision to swap to Unity was made. Figure 16 displays the final progress achieved with \textit{OpenGL} and C++. In the simulation, 1000 particles are rendered in a grid-like structure. They move downwards as a result of a gravitational force and bounce off the ``floor" ($y = 0$) with slight damping. There are currently no forces calculated between the particles and as a result they move through each other.
+    Learning the theory behind the graphics rendering pipeline and OpenGL took longer than anticipated. It was at this point that the decision to swap to Unity was made. Figure 16 displays the final progress achieved with \textit{OpenGL} and \textit{C++}. In the simulation, 1000 particles are rendered in a grid-like structure. They move downwards as a result of a gravitational force and bounce off the ``floor" ($y = 0$) with slight damping. There are currently no forces calculated between the particles and as a result they move through each other.
 
     \subsection{Simulation Loop}
 
@@ -750,7 +780,7 @@
     
     Next, the particles need to be rendered on to the screen. This is easily done in \textit{Unity} by creating a prefab of the built-in sphere object and instantiating the prefab many times. In order to make the simulation more realistic, a slight variance is added to the particles' starting positions, while maintaining the grid structure. For each instantiation, a particle struct is created and the game object is assigned to it. This struct is then added to a particles array, which contains every particle.
 
-    Once the particles were spawned and bouncing due to gravitational forces, the simulation loop described above was written in C\#. See the appendices for methods and calculations. However, the performance and frame rate of the simulation had dropped significantly, to around 2 frames per second.
+    Once the particles were spawned and bouncing due to gravitational forces, the simulation loop described above was written in \textit{C\#}. See the appendices for methods and calculations. However, the performance and frame rate of the simulation had dropped significantly, to around 2 frames per second.
 
     \subsubsection{GPU}
 
@@ -775,7 +805,7 @@
 
     \subsubsection{Spatial Hash CPU}
 
-    This section describes the processes involved in the spatial hash used for the C\# and CPU implementation. A lot of this method is inspired by a pre-existing implementation found online\cite{sphspatialexample}.
+    This section describes the processes involved in the spatial hash used for the \textit{C\#} and CPU implementation. A lot of this method is inspired by a pre-existing implementation found online\cite{sphspatialexample}.
 
     \begin{algorithm}[H]
         \caption{\textsc{PartialSpatialHashCPU}}
@@ -918,7 +948,7 @@
     \begin{figure}[H]
         \begin{center}
             \wideimage[width=\textwidth]{bitonicSortCSharp.png}
-            \caption{C\# parallelisation}
+            \caption{\textit{C\#} parallelisation}
         \end{center}
     \end{figure}
 
@@ -1081,6 +1111,23 @@
 
     These additional calculations have little impact on the overall frame rate of the simulation, it consistently remains within the 250 to 320 frame rate described beforehand for approximately 32,000 particles.
 
+    \subsection{Pre-Computed Constants}
+
+    Another optimisation made at this point involved constants and reducing the overall number of calculations made.
+
+    The first change involes distance checking. Instead of using \textsc(distance)() and comparing this to the smoothing radius, we instead compare the squared distance with the squared smoothing radius, only square rooting when needed. This is because calculating the square root is a very expensive computation and should only be done when needed. This can also be extended by precomputing the squared smoothing radius and storing it in a variable, as this is a value that will not change during runtime.
+
+    There are other constants that can be precomputed also. For example, each smoothing kernel involves multiplication of a fraction that depends on $h$, the smoothing radius. As $h$ is a constant, these can also be calculated and passed to the compute shader once, as shown below.
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=1.1\textwidth]{precomputeMults.png}
+            \caption{Precomputed Variables \cite{lague2}}
+        \end{center}
+    \end{figure}
+
+    This improvement increased the consistency of the frame rate; it remains within 280 to 340 frames per second.
+
     \subsection{Circles}
 
     It was at this point that the rendering shader was rewritten. Thanks to the \textit{OpenGL} learned at the beginning, it was possible to rewrite the Surface shader into a Vertex and Fragment shader. See the appendices for the new shader code. The reason for for this was to change the mesh that was being rendered. 
@@ -1142,14 +1189,42 @@
         \end{center}
     \end{figure}
 
-    With this optimisation, the simulation's frame rate improved from 320 frames to around 400 frames with approximately 40,000 particles. This was the final product created in this paper.
+    With this optimisation, the simulation's frame rate improved from 340 frames to around 400 frames with approximately 40,000 particles. This was the final product of this dissertation.
 
     \newpage
 
     \section{Results and Evaluation}
     \label{sec:resultsandevaluation}
-    \subsection{Results}
-    \subsection{Evaluation}
+
+    This project produced three simulations with varying levels of completion, illustrating the iterative nature of the Agile development process.
+
+    \subsection{Agile Development}
+
+    One of the key strengths of employing the Agile methodology in this project was the flexibility it offered in adapting to the strict time frame presented. The iterative nature allowed quick changing of software and tools, without the constaints of a more rigid development plan. This was especially helpful when the decision to swap over completely from \textit{OpenGL} to \textit{Unity} was made; there was no pause or replanning required. Furthermore, this allowed for a more self-directed workflow, due to independent development and research. However, there was still access to a supervisor if required. Overall, there was a more efficient and responsive development process due to the balance between independence and guidance provided.
+
+    Despite these advantages, there were also a few issues with this method. Due to the encouraged autonomy, too much independence led to lacking time structure, especially in the absence of external accountability. Supervisor support should have been utilised more than it was. Additionally, progress could have definitely been documented or recorded better; some \textit{Git} commits contained a large number of changes, which made it difficult to track specific modifications and the affect on the frame rate as a result of them.
+
+    Overall, Agile development provided significant contributions to the adaptability and progress of the project. While it was suited for dynamic and evolving projects such as this one, the methodology was very dependent on the discipline of the people utilising it.
+
+    \subsection{OpenGL Simulation}
+
+    One of the ``simulations" produced in this dissertation was the previously mentioned grid of cubes developed using \textit{C++} and \textit{OpenGL}. Due to the lack of features and the use of shaders and GPU-based rendering, the simulation achieved a consistently high frame rate. However, it did not portray realistic fluid behaviour, as the particles were only influenced by a gravitational force and experienced no inter-particle interactions (they passed through each other in straight lines with minimal collision detection at a boundary).
+
+    Although this method was ultimately abandoned, it still proved to be very beneficial from a learning perspective. A lot of the overall technical knowledge gained from this project was from the initial research required to use the \textit{OpenGL} graphics API. Hands-on experience with the graphics rendering pipeline through the use of \textit{OpenGL} and custom shaders provided key insights into low-level rendering processes and enabled improvements in the \textit{Unity} implementation. For example, the rendering shader was rewritten independently with this acquired knowledge. Furthermore, the process of learning compute shaders was greatly simplified and sped up the development process of this simulation significantly. Overall, it was a very important part of this project as acquiring low-level graphics programming skills improved technical confidence and enabled both this project and future projects.
+
+    In hindsight, while appreciative of the knowledge gained from this implementation, if supervisor support were further utilised, the decision to swap software could have been made a lot earlier. Due to the significant portion of development time occupied, there was a lot less time allocated to the final implementation as a whole. More time could have been allocated to optimisation techniques if the simulation's physics were completed at an earlier stage. Learning to balance exploration and knowledge with results is an important skill to improve in the future.
+
+    \subsection{Unity CPU Simulation}
+
+    The next simulation produced in this project was a CPU-based implementation with \textit{C\#} and \textit{Unity}. This achieved the same things that the previous simulation did, a grid of particles that moved due to gravitational forces, but had a lower frame rate, starting at around 300 frames per second for 1000 particles. This is not a large particle count, but larger numbers decreased this value quite significantly, so this was the initial count chosen. After the physics was implemented, the performance had dropped, peaking at 2 frames per second. With the first optimisation technique, spatial hashing, this was improved by over 20 times, achieving a consistent frame rate of over 40 frames per second for 1000 particles. However, this was nowhere near the desired number of particles, and increasing the count still produced detrimental performance reduction. Thus, the next optimisation was to switch to a GPU-based implementation.
+
+    An advantage of this CPU implementation was prior experience with \textit{Unity} from a full \textit{C\#}-based perspective. This reduced the learning curve significantly and thus greatly reduced the amount of time required to reach this point in development. Due to the familiarity of the environment, faster and more confident prototyping was possible. Moreover, confidence in the programming language facilitated the process of translating the academic papers used, from physics equations into executable code. Concepts such as Object-Oriented Programming and Unity's Monobehavior scripts were already well understood, further enhancing efficiency and accuracy within the implementation. As a result, a focus on particle behaviour and performance optimisation was possible.
+
+    There were unfortunately still a number of issues with this implementation. There was a lot of problems with memory, as the algorithm developed involved passing through entire structs between functions, causing repeated data to be recreated as copies, leading to significant performance overhead. Furthermore, this repeated copying was not cache-friendly, leading to slower data access. An improvement on this would have been to either pass the information to the methods by reference, or to rewrite the logic in a way that did not involve entire particle structs being passed through every step of the algorithm. Such a small particle count producing a low frame rate caused the debugging process to be quite frustrating, due to the difficulty of efficiently testing changes, hindering the ability to identify bottlenecks within the code logic. 
+    
+    There were a lot more optimisations that could have been implemented to improve these issues. For example, multithreading is supported in \textit{C\#}. However, the CPU has significantly less threads than the GPU and is not as good at performing calculations quickly. As a result, it was deemed unnecessary to implement threading on this version of the project; it was more time efficient to move on to the GPU implementation immediately.
+
+    The combination of these issues and the limited time frame contributed to the decision of abandoning this second implementation and continuing to a fully GPU-based implementation within Unity, though the initial programming required to produce this was beneficial in simplifying and speeding up the GPU implementation process.
 
     \newpage
 
@@ -1189,7 +1264,7 @@
 
     \subsection{Learn OpenGL and graphics}
 
-    \subsection{Kernel Proofs}
+    \subsection{Kernel Derivations}
 
     \subsubsection{Spiky Kernel Gradient}
 
@@ -1235,11 +1310,15 @@
 
         Therefore
 
-        $$\nabla W_{poly6}(\textbf{r}, h) = \frac{315}{64\pi{h}^9} \cdot 6(h^2 - r^2)^2 \cdot r \cdot \frac{\textbf{r}}{r} = \frac{315}{64\pi{h}^9}
-        \begin{cases}
-            6(h^2 - r^2)^2 \cdot \textbf{r} & 0 \leq r \leq h \\
-            0 & otherwise
-        \end{cases}$$
+        \begin{align*}
+            \nabla W_{poly6}(\mathbf{r}, h) 
+            &= \frac{315}{64\pi h^9} \cdot 6(h^2 - r^2)^2 \cdot r \cdot \frac{\mathbf{r}}{r} \\
+            &= \frac{315}{64\pi h^9}
+            \begin{cases}
+                6(h^2 - r^2)^2 \cdot \textbf{r} & 0 \leq r \leq h \\
+                0 & otherwise
+            \end{cases}
+        \end{align*}
     \end{proof}
 
     \subsubsection{Poly6 Laplacian}
@@ -1265,31 +1344,28 @@
 
         Using the result from $7.3.2$, let $C = \frac{315}{64\pi{h}^9}$
 
-        $$\frac{\partial{W}^2}{\partial{r^2}} = \frac{\partial}{\partial{r}} \left(-6C(h^2 - r^2)^2r\right)$$
-
-        Using the chain rule
-
-        $$\frac{\partial{W}^2}{\partial{r^2}} = -6C \cdot (1) \cdot (h^2 - r^2)^2 \cdot (-2r) \cdot 2(h^2-r^2)$$
-
-        $$\frac{\partial{W}^2}{\partial{r^2}} = -6C \cdot (h^2 - r^2)^2 \cdot \left[\left(h^2 - r^2\right) - 4r^2\right]$$
+        \begin{align*}
+            \frac{\partial W^2}{\partial r^2} 
+            &= \frac{\partial}{\partial r} \left(-6C(h^2 - r^2)^2 r\right) \\
+            &= -6C \cdot \frac{\partial}{\partial r} \left[(h^2 - r^2)^2 \cdot r\right] \\
+            &= -6C \cdot \left[(h^2 - r^2)^2 \cdot \frac{d}{dr}(r) + r \cdot \frac{d}{dr}(h^2 - r^2)^2\right] \\
+            &= -6C \cdot \left[(h^2 - r^2)^2 \cdot 1 + r \cdot 2(h^2 - r^2) \cdot (-2r)\right] \\
+            &= -6C \cdot \left[(h^2 - r^2)^2 - 4r^2(h^2 - r^2)\right] \\
+            &= -6C \cdot (h^2 - r^2) \cdot \left[(h^2 - r^2) - 4r^2\right]
+        \end{align*}
 
         Combining these results
 
-        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = \frac{2}{r} \cdot -6C \cdot r(h^2 - r^2)^2 \cdot -6C \cdot (h^2 - r^2) \cdot \left[\left(h^2 - r^2\right) - 4r^2\right]$$
-
-        Factor out $-6C \cdot (h^2 - r^2)$ and simplify the fraction
-
-        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (h^2 - r^2) \left[(h^2 - r^2) - 4r^2 + 2(h^2 - r^2)\right]$$
-
-        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (h^2 - r^2) \left[(3(h^2 - r^2) - 4r^2\right]$$
-
-        $$\left[(3(h^2 - r^2) - - 4r^2\right] = 3h^2 - 7r^2$$
-
-        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (h^2 - r^2) \cdot (3h^2 - 7r^2)$$
-
-        Expand the brackets
-
-        $$\frac{2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}} = -6C \cdot (3h^4 - 10h^2r^2 + 7r^4)$$
+        \begin{align*}
+            \frac{2}{r} \cdot \frac{\partial f}{\partial r} + \frac{\partial^2 f}{\partial r^2}
+            &= \frac{2}{r} \cdot \left(-6Cr(h^2 - r^2)^2\right) + \left(-6C \cdot (h^2 - r^2)\left[(h^2 - r^2) - 4r^2\right]\right) \\
+            &= -12C \cdot (h^2 - r^2)^2 -6C \cdot (h^2 - r^2) \cdot \left[(h^2 - r^2) - 4r^2\right] \\
+            &= -6C \cdot (h^2 - r^2) \left[2(h^2 - r^2) + (h^2 - r^2 - 4r^2)\right] \\
+            &= -6C \cdot (h^2 - r^2) \left[3(h^2 - r^2) - 4r^2\right] \\
+            &= -6C \cdot (h^2 - r^2) \cdot (3h^2 - 7r^2) \\
+            &= -6C \cdot (3h^4 - 10h^2r^2 + 7r^4) \\
+            &= C \cdot \left[-6(3h^4 - 10h^2r^2 + 7r^4)\right]
+        \end{align*}
 
         Therefore
 
