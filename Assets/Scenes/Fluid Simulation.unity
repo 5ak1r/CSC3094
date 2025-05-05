@@ -205,8 +205,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.09813464, y: -0.893985, z: 0.36538836, w: -0.24010816}
-  m_LocalPosition: {x: 8.59912, y: 23.08532, z: 223.88817}
+  m_LocalRotation: {x: 0.009874023, y: -0.5674147, z: -0.0068215546, w: -0.82334465}
+  m_LocalPosition: {x: -8.670446, y: 4.662528, z: 1.2940483}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -508,11 +508,11 @@ MonoBehaviour:
   showSpheres: 1
   collisionObj: {fileID: 811175951}
   collisionForce: 1000
-  rowCount: {x: 48, y: 32, z: 32}
+  rowCount: {x: 32, y: 32, z: 32}
   epsilon: 0.00001
   deltaTime: 0
   particleRadius: 0.2
-  boxDimensions: {x: 4, y: 10, z: 3}
+  boxDimensions: {x: 50, y: 50, z: 50}
   spawnPoint: {x: 1, y: 1, z: 1}
   jitter: 0.4
   particleMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}

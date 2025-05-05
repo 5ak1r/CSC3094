@@ -75,7 +75,7 @@
     \pagenumbering{arabic}
 
     \section*{Abstract}
-    This dissertation explores the Navier-Stokes equations, which are used to describe the motion of fluids. It briefly looks at an Eulerian implementation introduced by Jos Stam\cite{stam}, before shifting focus on to Lagrangian methods - specifically Smoothed Particle Hydrodynamics (SPH). Furthermore, this paper describes an implementation of this technique. \\ The main goal of this project is to produce a real-time fluid simulation that can be integrated into a video game, with minimal performance loss. It is an optimisation problem, motivated by an interest in the GPU and shader languages. The final project is a Smoothed Particle Hydrodynamics simulation that can reach 400 frames per second with over thirty-two thousand particles on modern hardware.
+    This dissertation explores the Navier-Stokes equations, which are used to describe the motion of fluids. It briefly looks at an Eulerian implementation introduced by Jos Stam\cite{stam}, before shifting focus on to Lagrangian methods - specifically Smoothed Particle Hydrodynamics (SPH). Furthermore, this paper describes an implementation of this technique. \\ The main goal of this project is to produce a real-time fluid simulation that can be integrated into a video game, with minimal performance loss. It is an optimisation problem, motivated by an interest in the GPU and shader languages. The final project is a Smoothed Particle Hydrodynamics simulation that can reach 600 frames per second with over thirty-two thousand particles on modern hardware.
     
     \newpage
 
@@ -439,7 +439,6 @@
         \item The simulation will remain stable and flow accurately with no stuttering or jumping.
         \item The simulation will run in real time, with adjustable properties that also update in real time.
         \item The simulation will be modular; new fluid types and behaviours can be added in the future with ease.
-        \item The simulation should work seamlessly within a larger project.
     \end{enumerate}
 
     \newpage
@@ -827,7 +826,7 @@
         \end{algorithmic}
     \end{algorithm}
 
-    This method is an improvement as each particle ends up with its own array of neighbours, which is only calculated once at the start of each update loop. The neighbours are stored in a vector within the particle struct and is unique to each particle. This is a huge improvement from before, where each particle calculated its neighbours independently, every update. However, this is at the cost of a lot more storage, as each particle stores their neighbours independently and can introduce repeated data. In regards to performance, the frame rate improves significantly from 2 frames to 40 frames per second on average with 1000 particles still.
+    This method is an improvement as each particle ends up with its own array of neighbours, which is only calculated once at the start of each update loop. The neighbours are stored in a vector within the particle struct and is unique to each particle. This is a huge improvement from before, where each particle calculated its neighbours independently, every update. However, this is at the cost of a lot more storage, as each particle stores their neighbours independently and can introduce repeated data. In regards to performance, the frame rate improves significantly from 2 frames to 15 frames per second on average with 1000 particles still.
 
     \begin{figure}[H]
         \begin{center}
@@ -1014,7 +1013,7 @@
 
     By eliminating non-neighboring particles and using a lookup table to store previously computed comparisons, the algorithm's complexity is reduced to $O(n)$ complexity. The worst case scenario is still $O(n^2)$ (if all the particles are within the same cell or neighbouring cells), but this should never be the case due to the forces they exert on each other. 
 
-    With these changes, the simulation achieved frame rates ranging between 250 and 320 for approximately 32,000 particles, a huge improvement to the 40 frames before.
+    With these changes, the simulation achieved frame rates ranging between 250 and 320 for approximately 32,000 particles, a huge improvement to the 15 frames before.
 
     \subsection{More Forces}
 
@@ -1219,7 +1218,7 @@
 
     \subsection{Unity CPU Simulation}
 
-    The next simulation produced in this project was a CPU-based implementation with \textit{C\#} and \textit{Unity}. This achieved the same things that the previous simulation did, a grid of particles that moved due to gravitational forces, but had a lower frame rate, starting at around 300 frames per second for 1000 particles. This is not a large particle count, but larger numbers decreased this value quite significantly, so this was the initial count chosen. After the physics was implemented, the performance had dropped, peaking at 2 frames per second. With the first optimisation technique, spatial hashing, this was improved by over 20 times, achieving a consistent frame rate of over 40 frames per second for 1000 particles. However, this was nowhere near the desired number of particles, and increasing the count still produced detrimental performance reduction. Thus, the next optimisation was to switch to a GPU-based implementation.
+    The next simulation produced in this project was a CPU-based implementation with \textit{C\#} and \textit{Unity}. This achieved the same things that the previous simulation did, a grid of particles that moved due to gravitational forces, but had a lower frame rate, starting at around 300 frames per second for 1000 particles. This is not a large particle count, but larger numbers decreased this value quite significantly, so this was the initial count chosen. After the physics was implemented, the performance had dropped, peaking at 2 frames per second. With the first optimisation technique, spatial hashing, this was improved by over 20 times, achieving a consistent frame rate of over 15 frames per second for 1000 particles. However, this was nowhere near the desired number of particles, and increasing the count still produced detrimental performance reduction. Thus, the next optimisation was to switch to a GPU-based implementation.
 
     An advantage of this CPU implementation was prior experience with \textit{Unity} from a full \textit{C\#}-based perspective. This reduced the learning curve significantly and thus greatly reduced the amount of time required to reach this point in development. Due to the familiarity of the environment, faster and more confident prototyping was possible. Moreover, confidence in the programming language facilitated the process of translating the academic papers used, from physics equations into executable code. Concepts such as Object-Oriented Programming and Unity's Monobehavior scripts were already well understood, further enhancing efficiency and accuracy within the implementation. As a result, a focus on particle behaviour and performance optimisation was possible.
 
@@ -1232,9 +1231,60 @@
 
     \subsection{Unity GPU Simulation}
     
-    The final simulation produced in this project was a GPU-based implementation with \textit{HLSL} and Compute Shaders with \textit{Unity}. When this version reached the same development point as the OpenGL implementation - a grid of particles affected by gravitational forces - it also achieved very high frame rates, averaging around 600 frames per second for 1,000 particles. When the physics was applied, the frame rate decreased to around 300 frames per second for 1,000 particles and less than 100 for 32,000 particles. Integrating the spatial hash algorithm into this simulation improved the average frame rate, achieving results between 250 to 320 frames per second for 32,000 particles. Manually precomputing and setting constant values into the simulation further improved the frame rate, to around 280-340 frames per second due to the significant reduction in the number of calculations performed. Finally, making the particles 2D circles that maintain their 3D appearance improved the overall frame rate even further to around 400 frames for 32,000 particles. This frame rate is maintained for higher particles counts but the simulation begins to 
+    The final simulation produced in this project was a GPU-based implementation with \textit{HLSL} and Compute Shaders with \textit{Unity}. When this version reached the same development point as the OpenGL implementation - a grid of particles affected by gravitational forces - it also achieved very high frame rates, averaging around 600 frames per second for 1,000 particles. When the physics was initially applied with no optimisations, the frame rate decreased to around 300 frames per second for 1,000 particles and less than 100 for 32,000 particles. Integrating the spatial hash algorithm into this simulation improved the average frame rate, achieving results between 250 to 320 frames per second for 32,000 particles. Manually precomputing and setting constant values into the simulation further improved the frame rate, to around 280-340 frames per second due to the significant reduction in the number of calculations performed. Finally, making the particles 2D circles that maintain their 3D appearance improved the overall frame rate even further to around 400 frames for 32,000 particles.
     
+    However, at this point when testing the impact of higher particle counts, there was an issue noticed regarding the box bounds that the particles were contained in. In the first frame, the particles were not forming a full grid as the grid was too large for the box bounds. This may have caused issues in the first few frames of the simulation but the particles quickly rectified this error and returned to a stable fluid flow.
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[width=0.6\textwidth]{firstFrameSmallBox.png}
+            \caption{First Frame Small Box}
+        \end{center}
+    \end{figure}
     
+    When the box bound was increased before running the simulation, the frame rate consistently remained in the 600s. The underlying reasoning is uncertain, but it is believed that it may be due to the collision resolution calculations. This was noticed too late in the development stage and further investigation could not be performed. The remaining results for this simulation will however involve box dimensions that satisfy the entire grid formation.
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[width=0.75\textwidth]{firstFrameBigBox.png}
+            \caption{First Frame Big Box}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=1.15\textwidth]{exponentialRegression.png}
+            \caption{Particle Count vs. Frame Rate \cite{desmos}}
+        \end{center}
+    \end{figure}
+
+    Figure 35 shows the frame rates obtained for different particle counts. This graph was created using Desmos, an online graphing calculator\cite{desmos}. There appears to be an exponential relationship between frame rate and particle count for this simulation. In the case of a video game, 60 frames per second is usually the target to maintain a smooth gameplay experience, and this simulation achieves a remarkable count of over 390,000 particles at this FPS. 
+    
+    A slight error noticed when testing larger particle counts was that some particles remained in the grid structure for a longer time than anticipated.
+
+    \begin{figure}[H]
+        \begin{center}
+            \includegraphics[]{gridIssues.png}
+            \caption{Grid Simulation Issues}
+        \end{center}
+    \end{figure}
+
+    There has not been a fix implemented and therefore, although this issue is eventually resolved automatically, it is not recommended to use this simulation for larger particle counts.
+
+    This simulation offers several improvements over the previous two versions. Most notably, it is more complete and can handle more than 1,000 particles. This significant improvement in performance is partly due to the improved memory management; it does not copy structs across methods and involves multi-threading, unlike the CPU implementation. This change also allows it to handle substantially greater particle counts with little trouble.
+
+    This simulation does suffer from a few issues. At the moment, it is just a demonstration of fluid physics. More code is required to make the fluid fully interactable; it is currently only affected by the sphere within the scene. Furthermore, it is not currently possible to create two different fluids simulataneously without writing more code. There is also the aforementioned issue with the reduced frame rate issues when the grid does not fit fully inside the initial box, and the delay in particle movement for larger particle counts. This heavily affects its scalability and needs further work to improve. Finally, it still looks like a collection of particles rather than a full body of liquid. Although this was out of the scope of this project, there is definitely more work that could be done in this area.
+
+    Overall, this is a satisfying result for an initial project in the area of fluid simulation. Achieving a fluid flow that exhibits a high degree of realism is a gratifying outcome.
+
+    \subsection{Requirements}
+
+    Functional requirements 1-5 were satisfied: the fluid simulation is rendered with particles that represent parcels of fluid - this is the SPH approach that was consistently used throughout the paper. The calculations involve consider the fluid's viscosity, density and pressure, satisfying functional requirement 2. It is also affected by the position of the sphere object within the scene and by gravitational forces, satisfying functional requirements 3 and 5. Finally, the fluid does not leave the assigned box dimensions, and are affected by the box changing dimensions. This satisfies the final functional requirement, number 4.
+
+    Non-functional requirements 1, 2, 5 and 6 were satisfied: the simulation achieves an average frame rate of 600 for over 32,000 particles, and maintains over 60 frames for up to 390,000 particles, satisfying non-functional requirement 1. Evidence of memory reductions are described through the lookup table improvment in the spatial hashing algoritm and the struct-copying issues mentioned in the CPU implementation. This satifies non-functional requirement 2. The properties of the fluid can be adjusted in the Unity inspector in real time, and the fluid reacts to these changes with no delay. This satisfies non-functional requirement 5. Although more code is required to implement new fluid types, the simple adjustability of the fluid properties mentioned earlier will make future implementation of other fluids easier. This satisfies non-functional requirement 6.
+
+    When the box dimensions are changed, the program does sometimes stutter slightly. This does not satisfy non-functional requirement 4. The aforementioned issue with large particle count grids dissatisfies non-functional requirement 3. These issues could not be rectified in the given time frame, but are possible in future work.
+
     \newpage
 
     \section{Conclusion}
