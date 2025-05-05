@@ -1289,9 +1289,48 @@
 
     \section{Conclusion}
     \label{sec:conclusion}
-    \subsection{Aims and Objectives}
+
+    This section discusses the original aim and objectives and whether they were satisfied. It also talks about the knowledge gained from this project and future work that may be done.
+
+    \subsection{Aim and Objectives}
+
+    \subsubsection{Aim}
+
+    This project produced an accurate fluid simulation that utilised Smoothed Particle Hydrodynamics. Evidence of the final fluid can be seen in the appendices below. The general SPH equations are formed using the Navier-Stokes equations as explained in \hyperref[sec:backgroundreview]{Background Review}. Furthermore, the frame rate of the simulation was consistently measured and there were successful attempts to optimise it. From an original performance of 2 frames per second, this was improved by over 300 times this amount, to a consistent 600 frames per second. The resulting code is a 3D fluid flow that works within Unity. Although it is not yet available as an asset, this will be possible in the future.
+
+    \subsubsection{Objectives}
+
+    \begin{enumerate}
+        \item \textbf{Explore Existing Fluid Simulations} - There was a thorough analysis of existing fluid simulations both available online and already implemented within video games. There were a lot of issues identified, such as availability, cost of assets and quality due to performance requirements. Benefits involved high visual quality and some interactivity.
+        \item \textbf{Navier-Stokes and SPH} - There was a thorough explanation of the Navier-Stokes equations and what they mean. There was no description of their derivation, which could have been included but deemed unnecessary. Eulerian and Lagrangian implementations of these equations were described and explained with examples for each given: a grid-based solution by Jos Stam and Smoothed Particle Hydrodynamics. A conclusion was drawn regarding which implementation was selected for this paper.
+        \item \textbf{OpenGL and C++/GLFW} - There was a thorough explanation of the rendering graphics pipeline as a result of the \textit{OpenGL} research performed. The reasoning for its selection was also highlighted in the \hyperref[sec:backgroundreview]{Background Review} section of the paper. Furthermore, the issues experienced due to lack of time were also explained.
+        \item \textbf{Unity and Compute Shaders} - There was a thorough description of two implementation methods using \textit{Unity}, a CPU implementation with just \textit{C\#} and a GPU implementation including compute shaders. This paper describes the methods used to produce fluid flow behaviours with both, with a main focus on the compute shader version.
+        \item \textbf{Frame Rate and Performance Investigations} - There were sufficient performance optimisations made throughout the paper. Starting from an extremely low frame rate of 2 frames per second, the simulation was eventually improved to 600 frames. Additionally, each action taken to improve the frame rate was described with the implementation presented. There are still a few issues with the simulation fluidity, but this is an area for future work.
+    \end{enumerate}
+
     \subsection{What Was Learned}
+
+    There was a lot learned throughout the course of this dissertation. Using \textit{OpenGL} for the first time deepened understanding on lower level graphics programming and the fundamentals of graphics rendering. Exploring the graphics rendering pipeline and how developers can interact with it through the use of shaders was also challenging but very rewarding. Evaluating the available options and assessing their project suitability improved development and planning skills. Before this project, experience with graphics and shaders was limited to the use of Shader Graphs in \textit{Unity}, a node-based approach similar to coding environments like \textit{Scratch}. This did not provide a thorough understanding of what shaders did and how they functioned; it was a high level abstraction that simplified the technical learning required. By the end of this project, it is now possible to write shaders without these simplifications, using \textit{GLSL} and \textit{HLSL}.
+
+    Furthermore, experience with fluid dynamics was minimal and based mostly on foundational concepts covered in an introductory module, \\ \emph{MSP2803:} ``Fluid Dynamics 1" at Newcastle University. There was also a brief understanding of grid-based simulations due to the Paper Review in \emph{CSC2034:} ``Introducing Contemporary Topics in Computing", a module taught in this degree; the paper chosen to review was the Stam paper mentioned in this dissertation\cite{stam}. As a result, a lot more research was required to fully understand the physics in computational fluid dynamics and to learn how to implement smoothed particle hydrodynamics in this simulation.
+
+    Previous projects were not reliant on optimisation, so there was little initial knowledge on techniques that could be used to improve a program's performance. An example of this would be through the use of structs. Through research, it was discovered that passing structs through methods caused all the data to be copied, which can cause huge performance and storage issues in much larger programs. The ability to use references is something that should have been known due to past experience with \textit{C++} but was not considered until actively searching for optimisation techniques.
+    
+    Learning about how a program can interact with the GPU through the use of shaders also increased understanding of computer architecture elements, such as threads and cores. Switching to the GPU-based computation for all of the calculations was something not practiced before and produced a significant performance increase. Although this is not required for smaller projects, it will be very helpful for future simulation tasks or larger programs.
+    
+    Additionally, a number of new algorithms and their computational implementations were learned. Neighbour-finding techniques such as spatial hashing have a number of uses outside of fluid simulations and video games in general and will be a useful tool for a developer to be able to use. Parallel algorithms, specifically Bitonic sort were also discovered through the course of this paper. Though it is simple to identify where parts of an algorithm are not reliant on each other (and can thus be executed in parallel), it is not as easy to automate the process. This will be a useful tool in the future for optimisation problems also as the computation can be offloaded to other threads and performed simulataneously.
+
     \subsection{Future Work}
+
+    There are a lot of areas where the exising simulation can be improved. The previously mentioned stuttering and collision logic causing frame drops are examples of this. Identifying the causes for these issues and then correcting them are examples of future work that can be done.
+
+    In addition, the simulation is still a collection of particles. In the future, methods can be used to hide the particles and achieve a more realistic fluid appearance, by visually smoothing them or rendering them with surface reconstruction techniques such as raymarching or screen spacing.
+    
+    As both the \textit{OpenGL} and CPU implementations were ultimately abandoned, it would be great to revisit them in the future and improve them even further. Although the CPU version may not achieve as high frame rates as the other two, it can still be optimised well enough to be realistic and run with at least 60 frames per second. The \textit{OpenGL} version, however, could be improved to a state where it may become slightly superior to the GPU implementation with \textit{Unity}, due to the lack of overhead present from a graphics API as opposed to an entire game engine.
+
+    Further optimisations can be made in addition to the ones currently implemented in the final version. Since performance decreases at an exponential rate, there is a lot more work that can be done to reduce these effects and maintain a high frame count for larger particle quantities. An eventual goal would be to make the simulation smooth and consistent for 1,000,000 particles at 60 frames per second, though this is still quite far out of reach for now.
+
+    Eventually, this simulation will be implemented into a real game. 
 
     \newpage
 
