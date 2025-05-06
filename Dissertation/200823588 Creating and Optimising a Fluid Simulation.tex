@@ -66,7 +66,7 @@
     \large Supervised by: Richard Davison
 }
 
-\date{April 2025}
+\date{May 2025}
 
 \begin{document}
 
@@ -450,6 +450,10 @@
 
     This section talks about everything learned and implemented throughout the development process.
 
+    \subsection{Ethical Considerations}
+    
+    This research does not involve human or animal participants and does not use sensitive or personal data of any kind. As such, there are no significant ethical concerns. All code and media are obtained from publicly available and open sources. Appropriate credit is given when required.
+
     \subsection{Software Development Model}
 
     This project adopts the agile development model. There are four core values of this method\cite{geekagile}:
@@ -462,6 +466,14 @@
     \end{itemize}
 
     While not all of these principles are directly applicable in this context, the emphasis on adaptability remains essential. Regular weekly meetings with the project supervisor supports an iterative approach and allows the scope to shift due to time constraints or technical challenges. For example, the graphics rendering method was switched from \textit{OpenGL} to \textit{Unity} in order to guarantee completion within the given timeframe. Additionally, as the primary goal of this dissertation is optimisation, extensive documentation is unnecessary; the simulation only needs to be demonstable and functional. Development was carried out in short iterations, with weekly goals set and versioned using \textit{Git}.
+
+    \subsection{Hardware}
+
+    The following methods were implemented from a laptop with the following hardware specifications:
+
+    \paragraph{CPU} Intel(R) Core(TM) i7-14700HX 2.10GHz
+    \paragraph{GPU} NVIDIA GeForce RTX 4060 Laptop
+    \paragraph{RAM} 16GB DDR5-5600MT/s
 
     \subsection{Graphics Rendering Pipeline}
 
@@ -1281,11 +1293,94 @@
 
     \subsection{Requirements}
 
-    Functional requirements 1-5 were satisfied: the fluid simulation is rendered with particles that represent parcels of fluid - this is the SPH approach that was consistently used throughout the paper. The calculations involve consider the fluid's viscosity, density and pressure, satisfying functional requirement 2. It is also affected by the position of the sphere object within the scene and by gravitational forces, satisfying functional requirements 3 and 5. Finally, the fluid does not leave the assigned box dimensions, and are affected by the box changing dimensions. This satisfies the final functional requirement, number 4.
+    Functional requirements 1-5 were satisfied: the fluid simulation is rendered with particles that represent parcels of fluid - this is the SPH approach that was consistently used throughout the paper. The calculations involved consider the fluid's viscosity, density and pressure, satisfying functional requirement 2. It is also affected by the position of the sphere object within the scene and by gravitational forces, satisfying functional requirements 3 and 5. Finally, the fluid does not leave the assigned box dimensions, and are affected by the box changing dimensions. This satisfies the final functional requirement, number 4.
 
-    Non-functional requirements 1, 2, 5 and 6 were satisfied: the simulation achieves an average frame rate of 600 for over 32,000 particles, and maintains over 60 frames for up to 390,000 particles, satisfying non-functional requirement 1. Evidence of memory reductions are described through the lookup table improvment in the spatial hashing algoritm and the struct-copying issues mentioned in the CPU implementation. This satifies non-functional requirement 2. The properties of the fluid can be adjusted in the Unity inspector in real time, and the fluid reacts to these changes with no delay. This satisfies non-functional requirement 5. Although more code is required to implement new fluid types, the simple adjustability of the fluid properties mentioned earlier will make future implementation of other fluids easier. This satisfies non-functional requirement 6.
+    Non-functional requirements 1, 2, 5 and 6 were satisfied: the simulation achieves an average frame rate of 600 for over 32,000 particles, and maintains over 60 frames for up to 390,000 particles, satisfying non-functional requirement 1. Evidence of memory reductions are described through the lookup table improvment in the spatial hashing algorithm and the struct-copying issues mentioned in the CPU implementation. This satifies non-functional requirement 2. The properties of the fluid can be adjusted in the Unity inspector in real time, and the fluid reacts to these changes with no delay. This satisfies non-functional requirement 5. Although more code is required to implement new fluid types, the simple adjustability of the fluid properties mentioned earlier will make future implementation of other fluids easier. This satisfies non-functional requirement 6.
 
     When the box dimensions are changed, the program does sometimes stutter slightly. This does not satisfy non-functional requirement 4. The aforementioned issue with large particle count grids dissatisfies non-functional requirement 3. These issues could not be rectified in the given time frame, but are possible in future work.
+
+    \subsection{Hardware Statistics}
+
+    This section uses HWiNFO\cite{hwinfo} to display the CPU core temperatures and core usages and GPU statistics when the laptop is idle, with just HWiNFO and the Unity Editor open, and when both the simulations are running.
+
+    \subsubsection{Idle}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=1.1\textwidth]{beforeCPUUsage.png}
+            \caption{CPU core usage IDLE}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.75\textwidth, height=0.41\textheight]{beforeCPUTemp.png}
+            \caption{CPU core temperatures IDLE}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.75\textwidth, height=0.41\textheight]{beforeGPU.png}
+            \caption{GPU statistics IDLE}
+        \end{center}
+    \end{figure}
+
+    \subsubsection{CPU}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=1.1\textwidth]{afterCPUUsageCPU.png}
+            \caption{CPU core usage CPU IMPL}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.75\textwidth, height=0.41\textheight]{afterCPUTempCPU.png}
+            \caption{CPU core temperatures CPU IMPL}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.75\textwidth, height=0.41\textheight]{afterGPUCPU.png}
+            \caption{GPU statistics CPU IMPL}
+        \end{center}
+    \end{figure}
+
+    \subsubsection{GPU}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=1.1\textwidth]{afterCPUUsageGPU.png}
+            \caption{CPU core usage GPU IMPL}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.75\textwidth, height=0.41\textheight]{afterCPUTempGPU.png}
+            \caption{CPU core temperatures GPU IMPL}
+        \end{center}
+    \end{figure}
+
+    \begin{figure}[H]
+        \begin{center}
+            \wideimage[width=0.75\textwidth, height=0.41\textheight]{afterGPUGPU.png}
+            \caption{GPU statistics GPU IMPL}
+        \end{center}
+    \end{figure}
+
+    \subsubsection{Hardware Evaluation}
+
+    Comparing the CPU core usage values, it is evident that the full C\# version uses fewer cores than the compute shader version at any given time. This is expected considering multithreading was not implemented and likely contributes to performance issues in this version due to bottlenecking. Additionally, none of the cores ever reach maximum capacity, indicating significant room for improvement and optimisation, as described above.
+    
+    As most of the computation is supposed to be offloaded on to the GPU, it is expected for the compute shader version to not tax the CPU heavily. This is confirmed by these statistics; the C\# version shows negligible GPU utilisation whereas the final version appropriately offloads a lot of the work to the GPU.
+
+    Temperature readings also support these claims and confirm that thermal conditions are stable and consistent. This is also evidence that the operating system is dynamically reallocating tasks between the cores to balance thermal load. Although some of the cores reach temperatures as high as $81\deg C$, their average is nearly half of this, indicating they are short bursts of heat rather than consistent values.
+    
+    In conclusion, the data suggests that the C\# implementation underutilises the CPU, leading to performance bottlenecks. This is due to a lack of multithreading and optimised resource allocation. In contrast, the compute shader version correctly offloads computations to the GPU and efficiently utilises it as shown by its average clock speed increasing. These results highlight the importance of proper task delegation between the hardware and demonstrates attempts to optimise performance this way. 
 
     \newpage
 
@@ -1573,16 +1668,46 @@
         \caption{Fragment Shader and Palette method}
     \end{figure}
 
-    \subsection{Final Product}
+    \subsection{Final Result}
 
     \begin{figure}[H]
-        \wideimage[height=0.4\textheight]{xIncreaseThenZIncrease.png}
-        \caption{Box X-dimension increase then Z-dimension increase}
+        \wideimage[height=0.4\textheight]{smallBoxStart.png}
+        \caption{Small box, first few seconds}
     \end{figure}
 
     \begin{figure}[H]
-        \wideimage[height=0.4\textheight]{3Frames96Cubed.png}
-        \caption{3 FPS and instability with 884736 particles}
+        \wideimage[height=0.4\textheight]{slowedDownSmallBox.png}
+        \caption{Small box, slowed down}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{xIncrease.png}
+        \caption{Box X-dimension increase}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{xDecrease.png}
+        \caption{Box X-dimension abruptly decreased}
+    \end{figure}
+    
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{zIncrease.png}
+        \caption{Box Z-dimension increase}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{sphereRipples.png}
+        \caption{Ripples as particles pushed away by sphere}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{sphereDisplacement.png}
+        \caption{Sphere displacement}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{sphereDisplacementInside.png}
+        \caption{No particles inside the sphere radius}
     \end{figure}
 
     \begin{figure}[H]
