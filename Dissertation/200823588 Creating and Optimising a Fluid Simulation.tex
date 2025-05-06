@@ -1421,9 +1421,9 @@
 
     \subsection{Future Work}
 
-    There are a lot of areas where the existing simulation can be improved. The previously mentioned stuttering and collision logic causing frame drops are examples of this. Identifying the causes for these issues and then correcting them are examples of future work that can be done.
+    There are a lot of areas where the existing simulation can be improved. The previously mentioned stuttering and collision logic causing frame drops are examples of this. Identifying the causes for these issues and then correcting would greatly benefit the simulation in future work.
     
-    Collision logic could also be further improved to consider terrain and other objects that are rendered into the scene. As of now, the particles interact with the box due to it being drawn in the same position as the bounds set. For the sphere, its position is updated in the shader and then collisions are checked - which is a very slow and poorly scaled implementation - performance would suffer as more interactable objects were implemented this way. Custom RigidBodies or advanced collision logic can be developed in the future to account for all objects that may be in the scene.
+    Collision logic could also be further improved, to consider terrain and other objects that are rendered into the scene. As of now, the particles interact with the box due to it being drawn in the same position as the bounds set. For the sphere, its position is updated in the shader every update loop and then collisions are checked - which is a very slow and poorly scaled implementation; performance would suffer as more interactable objects were implemented this way. Custom RigidBodies or advanced collision logic can be developed in the future to account for all objects that may be in the scene.
 
     In addition, the simulation is still a collection of particles. In the future, methods can be used to hide the particles and achieve a more realistic fluid appearance, by visually smoothing them or rendering them with surface reconstruction techniques such as ray-marching or screen spacing. Also, the simulation currently only supports one type of fluid at a time. In the future this simulation should be able to simulate the interactions between two different fluids, such as oil and water.
     
