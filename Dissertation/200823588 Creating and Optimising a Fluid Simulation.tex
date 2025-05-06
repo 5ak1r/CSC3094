@@ -12,6 +12,8 @@
 \usepackage{algorithm}
 \usepackage{algpseudocodex}
 \usepackage{enumitem}
+\usepackage[utf8]{inputenc}
+\usepackage{subcaption}
 
 
 \lstdefinelanguage{glsl}{
@@ -535,7 +537,7 @@
 
     \subsection{Learn OpenGL}
 
-    Using this knowledge of the rendering pipeline, the \textit{OpenGL} specification and the \textit{Learn OpenGL} website, it is now possible to render particles on to the screen and apply transformations to them. See the \hyperref[sec:appendices]{appendices} for code snippets and graphics produced from this tutorial. 
+    Using this knowledge of the rendering pipeline, the \textit{OpenGL} specification and the \textit{Learn OpenGL} website, it is now possible to render particles on to the screen and apply transformations to them. See the \hyperref[sec:appendices]{appendices} for graphics produced from this tutorial. 
     
     \begin{figure}[H]
         \begin{center}
@@ -1323,14 +1325,16 @@
     \subsection{Future Work}
 
     There are a lot of areas where the exising simulation can be improved. The previously mentioned stuttering and collision logic causing frame drops are examples of this. Identifying the causes for these issues and then correcting them are examples of future work that can be done.
-
-    In addition, the simulation is still a collection of particles. In the future, methods can be used to hide the particles and achieve a more realistic fluid appearance, by visually smoothing them or rendering them with surface reconstruction techniques such as raymarching or screen spacing.
     
-    As both the \textit{OpenGL} and CPU implementations were ultimately abandoned, it would be great to revisit them in the future and improve them even further. Although the CPU version may not achieve as high frame rates as the other two, it can still be optimised well enough to be realistic and run with at least 60 frames per second. The \textit{OpenGL} version, however, could be improved to a state where it may become slightly superior to the GPU implementation with \textit{Unity}, due to the lack of overhead present from a graphics API as opposed to an entire game engine.
+    Collision logic could also be further improved to consider terrain and other objects that are rendered into the scene. As of now, the particles interact with the box due to it being drawn in the same position as the bounds set. For the sphere, its position is updated in the shader and then collisions are checked - which is a very slow and poorly scaled implementation - performance would suffer as more interactable objects were implemented this way. Custom rigidbodies or advanced collision logic can be developed in the future to account for all objects that may be in the scene.
 
-    Further optimisations can be made in addition to the ones currently implemented in the final version. Since performance decreases at an exponential rate, there is a lot more work that can be done to reduce these effects and maintain a high frame count for larger particle quantities. An eventual goal would be to make the simulation smooth and consistent for 1,000,000 particles at 60 frames per second, though this is still quite far out of reach for now.
+    In addition, the simulation is still a collection of particles. In the future, methods can be used to hide the particles and achieve a more realistic fluid appearance, by visually smoothing them or rendering them with surface reconstruction techniques such as raymarching or screen spacing. Also, the simulation currently only supports one type of fluid at a time. In the future this simulation should be able to simulate the interactions between two different fluids, such as oil and water.
+    
+    As both the \textit{OpenGL} and CPU implementations were ultimately abandoned, it would be great to revisit them and improve them even further. Although the CPU version may not achieve as high frame rates as the other two, it can still be optimised well enough to be realistic and run with at least 60 frames per second. The \textit{OpenGL} version, however, could be improved to a state where it may become slightly superior to the GPU implementation with \textit{Unity}, due to the lack of overhead present from a graphics API as opposed to an entire game engine.
 
-    Eventually, this simulation will be implemented into a real game. 
+    Further optimisations can be made in addition to the ones currently implemented in the final version. Since performance decreases at an exponential rate, there is a lot more work that can be done to reduce these effects and maintain a high frame count for larger particle quantities. An eventual goal would be to make the simulation smooth and consistent for 1,000,000 particles at 60 frames per second, though this is still quite far out of reach for now. This may be possible with more recent studies and discoveries made in computational fluid dynamics - the papers used in this dissertation are quite outdated by now (Stam's  and Müller's papers was written in 2003) but were great tools for making a start in CFDs.
+
+    More future work would involve integrating the completed fluid into an actual video game environment. This would be to ensure that the fluid does not affect the performance of other assets built into a scene with it and does not reduce the overall frame rate of the game to a suboptimal value.
 
     \newpage
 
@@ -1340,18 +1344,18 @@
 
     \newpage
 
-    \section{Appendices}
+    \appendix
     \label{sec:appendices}
 
-    \subsection{Unity Asset Store}
+    \section{Unity Asset Store}
 
     \begin{figure}[H]
-        \wideimage[]{unityStore1.png}
+        \wideimage[width=1.4\textwidth]{unityStore1.png}
         \caption{Most popular results for "fluid simulation" \cite{unityasset}}
     \end{figure}
 
     \begin{figure}[H]
-        \wideimage[]{unityStore2.png}
+        \wideimage[width=1.4\textwidth]{unityStore2.png}
         \caption{Cheapest results for "fluid simulation" \cite{unityasset}}
     \end{figure}
 
@@ -1360,11 +1364,241 @@
         \caption{Example of surface-only Unity asset \cite{stylized}}
     \end{figure}
 
-    \subsection{Learn OpenGL and graphics}
+    \section{Learn OpenGL and graphics}
 
-    \subsection{Kernel Derivations}
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGL2Triangles.png}
+            \caption{Rendering two triangles with the same shader in OpenGL}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGL2Triangles2Shaders.png}
+            \caption{Rendering two triangles with different shaders in OpenGL}
+        \end{subfigure}
+        \caption{Initial Triangle Rendering}
+    \end{figure}
 
-    \subsubsection{Spiky Kernel Gradient}
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGL4TrianglesDark.png}
+            \caption{Colour-changing triangle dark}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGL4TrianglesLight.png}
+            \caption{Colour-changing triangle light}
+        \end{subfigure}
+        \caption{Rainbow Triangle and Colour-changing triangle}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGL4TrianglesBox.png}
+            \caption{Texture Rendering}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGLLayeredTexturesAndColour.png}
+            \caption{Colours and textures applied over a texture}
+        \end{subfigure}
+        \caption{Textures}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGLMovingFirst.png}
+            \caption{First position}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{openGLMovingSecond.png}
+            \caption{Second position}
+        \end{subfigure}
+        \caption{Graphics moving with time}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{phongLighting1.png}
+            \caption{Light in top right corner}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{phongLighting2.png}
+            \caption{Light on the right}
+        \end{subfigure}
+        \caption{Phong Lighting and moveable light source}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{spotLight.png}
+            \caption{Spotlight}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{multipleLightsAndSpotlight.png}
+            \caption{Multiple light sources}
+        \end{subfigure}
+        \caption{More lighting}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{renderingModels.png}
+            \caption{One model}
+        \end{subfigure}
+        \hfill
+        \begin{subfigure}[b]{0.45\textwidth}
+            \centering
+            \includegraphics[width=\textwidth]{gridOfModels.png}
+            \caption{Grid of models}
+        \end{subfigure}
+        \caption{Rendering Object Files}
+    \end{figure}
+
+    \section{CPU Implementation with Unity}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=0.8\textwidth]{collisionDetectionCPU.png}
+        \caption{CPU collision detection C\#}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{simulationLoopCPU.png}
+        \caption{Simulation Loop}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{neighbourTableCPU.png}
+        \caption{Neighbour Table}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[]{densityPressureCPU.png}
+        \caption{Density and Pressure}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[]{getNeighboursCPU.png}
+        \caption{Get Neighbours}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[]{pressureViscosityForce.png}
+        \caption{Pressure and Viscosity Forces}
+    \end{figure}
+    
+    \section{GPU Implementation with Unity}
+
+    \subsection{Rendering Logic}
+
+    \begin{figure}[H]
+        \wideimage[width=0.85\textwidth]{particleGPU.png}
+        \caption{Particle struct sent to shader}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[width=0.85\textwidth]{renderGPU.png}
+        \caption{Update loop to render the particles}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[]{setupBuffersGPU.png}
+        \caption{Buffer setup for shaders}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[]{gridParticlesGPU.png}
+        \caption{Render the grid of particles with slight jitter}
+    \end{figure}
+
+    \subsection{Sphere Collider Logic}
+
+    Note: the sphere's position and radius is passed through to the shader every update loop.
+
+    \begin{figure}[H]
+        \wideimage[]{sphereLogicGPU.png}
+        \caption{Sphere Collider Logic}
+    \end{figure}
+
+    \subsection{Collision Resolution}
+
+    \begin{figure}[H]
+        \wideimage[]{moveParticlesGPU.png}
+        \caption{Particle movement and collision resolution in the same method}
+    \end{figure}
+
+    \subsection{Rewritten Shader}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=0.8\textheight]{newShader1.png}
+        \caption{setup and Particle struct}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[height=0.9\textheight]{newShader2.png}
+        \caption{appdata, v2f structs and vertex shader}
+    \end{figure}
+
+    \begin{figure}[H]
+        \centering
+        \includegraphics[width=\textwidth]{newShader3.png}
+        \caption{Fragment Shader and Palette method}
+    \end{figure}
+
+    \subsection{Final Product}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{xIncreaseThenZIncrease.png}
+        \caption{Box X-dimension increase then Z-dimension increase}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{3Frames96Cubed.png}
+        \caption{3 FPS and instability with 884736 particles}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{xIncreaseThenZIncrease.png}
+        \caption{Box X-dimension increase then Z-dimension increase}
+    \end{figure}
+
+    \begin{figure}[H]
+        \wideimage[height=0.4\textheight]{3Frames96Cubed.png}
+        \caption{3 FPS and instability with 884736 particles}
+    \end{figure}
+
+
+    \section{Kernel Derivations}
+
+    \subsection{Spiky Kernel Gradient}
 
     \begin{proof}
         Spherical Gradient is defined as
@@ -1393,10 +1627,10 @@
         \end{cases}$$
     \end{proof}
 
-    \subsubsection{Poly6 Gradient}
+    \subsection{Poly6 Gradient}
 
     \begin{proof}
-        Using the spherical gradient from $7.3.1$
+        Using the spherical gradient from $E.1$
 
         $$\nabla W_{poly6}(r, h) = \frac{\partial{W}}{\partial{r}} \cdot \frac{\textbf{r}}{r}$$
 
@@ -1419,7 +1653,7 @@
         \end{align*}
     \end{proof}
 
-    \subsubsection{Poly6 Laplacian}
+    \subsection{Poly6 Laplacian}
 
     \begin{proof}
         Spherical Laplacian is defined as
@@ -1440,7 +1674,7 @@
 
         $$\nabla^2 W(\textbf{r}, h) = {2}{r} \cdot \frac{\partial{f}}{\partial{r}} + \frac{\partial^2{f}}{\partial{r^2}}$$
 
-        Using the result from $7.3.2$, let $C = \frac{315}{64\pi{h}^9}$
+        Using the result from $E.2$, let $C = \frac{315}{64\pi{h}^9}$
 
         \begin{align*}
             \frac{\partial W^2}{\partial r^2} 

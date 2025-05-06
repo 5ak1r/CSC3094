@@ -126,7 +126,7 @@ public class ParticleManagerCPU : MonoBehaviour
 
     private void Update()
     {
-        //apply gravity and update position prediction
+        //apply gravity
         for (int i = 0; i < PARTICLE_COUNT; i++)
         {
             particles[i].velocity += DELTA_TIME * GRAVITY * Vector3.down;
